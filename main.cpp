@@ -5,7 +5,7 @@
 
 #define ASPECT (16. / 9)
 // ascii art color map from https://paulbourke.net/dataformats/asciiart/
-const std::vector<char> cmap = {'$', '@', 'B', '%', '8', '&', 'W', 'M', '#', '*', 'o', 'a', 'h', 'k', 'b', 'd', 'p', 'q', 'w', 'm', 'Z', 'O', '0', 'Q', 'L', 'C', 'J', 'U', 'Y', 'X', 'z', 'c', 'v', 'u', 'n', 'x', 'r', 'j', 'f', 't', '/', '\\', '|', '(', ')', '1', '{', '}', '[', ']', '?', '-', '_', '+', '~', '<', '>', 'i', '!', 'l', 'I', ';', ':', ',', '"', '^', '`', '\'', '.', ' '};
+const std::vector<char> cmap = {'$', '@', 'B', '%', '8', '&', 'W', 'M', '#', '*', 'o', 'a', 'h', 'k', 'b', 'd', 'p', 'q', 'w', 'm', 'Z', 'O', '0', 'Q', 'L', 'C', 'J', 'U', 'Y', 'X', 'z', 'c', 'v', 'u', 'n', 'x', 'r', 'j', 'f', 't', '/', '\\', '|', '(', ')', '1', '{', '}', '[', ']', '?', '-', '_', '+', '~', '<', '>', 'i', '!', 'l', 'I', ';', ':', ',', '"', '^', '`', '\'', '.'};
 
 char sample_cmap(double val)
 {
@@ -134,7 +134,7 @@ Collision ray_wall_intersect(ray r, Wall w)
 
     bool hit = p1 > 0 && p2 >= 0 && p2 <= w.upper_bound;
 
-    vec2 normal(w.direction.y, w.direction.x);
+    vec2 normal(w.direction.y, -w.direction.x);
     if (normal.dot(r.direction) > 0)
         normal = normal * (-1.);
 
@@ -149,7 +149,7 @@ Collision ray_circle_intersect(ray r, Circle geo)
 
     double b = 2 * (r.direction.x * z.x + r.direction.y * z.y);
 
-    double c = z.x * z.x + z.y * z.y - geo.radius * geo.radius;
+    double c = z.dot(z) - geo.radius * geo.radius;
 
     double det = b * b - 4 * a * c;
 
@@ -200,13 +200,13 @@ struct Camera
         double object_height = .5;
         double image_plane_width = sensor_size / focal_length;
         double image_plane_height = image_plane_width / ASPECT;
-        std::cout << image_plane_height << std::endl;
+        //std::cout << image_plane_height << std::endl;
 
         for (int i = 0; i < width; i++)
         {
             if (hits.at(i))
             {
-                double image_space_x = i / (double)width + .5 / width;
+                double image_space_x = i / static_cast<double>(width) + .5 / width;
                 double image_plane_vector_y = -image_space_x * sensor_size + .5 * sensor_size;
                 double image_plane_distance = vec2(focal_length, image_plane_vector_y).length() / focal_length;
 
@@ -215,7 +215,7 @@ struct Camera
                 for (int j = 0; j < height; j++)
                 {
                     // pixel position in 0 to 1 image space
-                    double image_space_y = j / (double)height + .5 / height;
+                    double image_space_y = j / static_cast<double>(height) + .5 / height;
                     double off_center = std::abs(.5 - image_space_y) * image_plane_height;
                     if (off_center < apparent_height)
                         out_hits.at(j).at(i) = true;
@@ -281,7 +281,7 @@ void print_buffer_normalized(const std::vector<double> &depth, const std::vector
             std::cout << sample_cmap(normalized_depth);
         }
         else
-            std::cout << '.';
+            std::cout << ' ';
     }
     std::cout << std::endl;
 }
@@ -295,7 +295,7 @@ void print_bool_buffer2d(const std::vector<std::vector<bool>> buffer)
             if (buffer.at(i).at(j))
                 std::cout << 'X';
             else
-                std::cout << '+';
+                std::cout << ' ';
         }
         std::cout << "\n";
     }
@@ -311,6 +311,9 @@ int main()
     // walls.push_back(Wall(vec2(0, -1), vec2(2.5, 0), 1));
     circles.push_back(Circle(point2(5, 0), 1));
 
+    walls.push_back(Wall(vec2(2, -1), point2(4, 3), 1));
+    walls.push_back(Wall(vec2(1, .5), point2(4, -3), 2));
+
     double pixel_aspect = 2.3;
     int resolution = 50;
 
@@ -323,7 +326,7 @@ int main()
         std::vector<bool> hits(resolution, false);
         std::vector<vec2> normals(resolution, vec2(1, 0));
         std::vector<vec2> positions(resolution, vec2(0, 0));
-        double step = (1. / (double)resolution);
+        double step = (1. / static_cast<double>(resolution));
 
         for (int i = 0; i < resolution; i++)
         {
