@@ -7,6 +7,7 @@
     3. `cmake ..` to configure the project.
     4. `make` to build the project.
     5. `./RaytracerADP` to run the executable.
+2. Refactor the scene geometry description to utilize object oriented programming features. Both `Circle` and `Box` now inherit from `SceneGeometry`, a purely virtual class providing an interface for intersection with rays. 
 ## First Sprint
 This is the result of the first sprint. Our implementation supports all the features from the requirements:
 1. Definition of a camera, rays and scene objects. A camera is a struct that has a member function to create rays originating at the camera. The most important members of a camera are the position and the orientation (as an angle in radians). A ray is generated first in local space of the camera based on the lens properties and then transformed to world space by applying the rotation and the translation of the camera to it.

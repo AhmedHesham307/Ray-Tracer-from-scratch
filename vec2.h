@@ -28,6 +28,5 @@ struct vec2
     vec2 operator*(double d);
 };
 
-
-
+using point2 = vec2;
 #endif

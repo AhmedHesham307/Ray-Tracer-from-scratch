@@ -1,9 +1,11 @@
 #include <iostream>
-#include <vector>
+
 #include <cmath>
 #include <float.h>
 #include <SDL.h>
+#include <memory>
 #include "vec2.h"
+#include "scene.h"
 
 #define ASPECT (16. / 9)
 // ascii art color map from https://paulbourke.net/dataformats/asciiart/
@@ -27,148 +29,9 @@ enum DisplayMode
     shaded
 };
 
-using point2 = vec2;
 
-struct ray
-{
-    vec2 direction;
-    point2 origin;
 
-    ray(vec2 direction, point2 origin) : direction{direction}, origin{origin} {}
-};
 
-struct Wall
-{
-    vec2 direction;
-    point2 origin;
-    double upper_bound;
-
-    Wall(vec2 direction, point2 origin, double upper_bound) : direction{direction}, origin{origin}, upper_bound{upper_bound} {}
-};
-
-struct Collision
-{
-    double distance;
-    vec2 normal;
-    bool hit;
-    Collision(double distance, vec2 normal, bool hit) : distance{distance}, normal{normal}, hit{hit} {}
-};
-
-struct Circle
-{
-    point2 center;
-    double radius;
-    Circle(point2 center, double radius) : center{center}, radius{radius} {}
-};
-
-Collision ray_wall_intersect(ray r, Wall w)
-{
-
-    // check determinant so we do not attempt to solve an unsolvable system (otherwise divide by zero will occur)
-    double det = (r.direction.x * (-w.direction.y) - (-w.direction.x * r.direction.y));
-    if (det == 0)
-        return Collision(-1, vec2(0, 0), false);
-
-    vec2 rhs = r.origin * (-1.) + w.origin;
-
-    double first_step_fraction = r.direction.y / r.direction.x;
-
-    double p2 = (rhs.y - first_step_fraction * rhs.x) / (-w.direction.y + first_step_fraction * w.direction.x);
-
-    double p1 = (rhs.x + p2 * w.direction.x) / r.direction.x;
-
-    bool hit = p1 > 0 && p2 >= 0 && p2 <= w.upper_bound;
-
-    vec2 normal(w.direction.y, -w.direction.x);
-    if (normal.dot(r.direction) > 0)
-        normal = normal * (-1.);
-
-    return Collision(r.direction.length() * p1, normal, hit);
-}
-
-Collision ray_circle_intersect(ray r, Circle geo)
-{
-    vec2 z = r.origin + geo.center * (-1);
-
-    double a = r.direction.x * r.direction.x + r.direction.y * r.direction.y;
-
-    double b = 2 * (r.direction.x * z.x + r.direction.y * z.y);
-
-    double c = z.dot(z) - geo.radius * geo.radius;
-
-    double det = b * b - 4 * a * c;
-
-    double p = -1;
-
-    if (det < 0)
-        return Collision(-1, vec2(0, 0), false);
-    vec2 intersection_point(0, 0);
-    if (det == 0)
-        intersection_point = r.origin + r.direction * (-b / (2 * a));
-    else
-    {
-        double p1 = (-b + sqrt(det)) / (2 * a);
-        double p2 = (-b - sqrt(det)) / (2 * a);
-
-        p = p1 < p2 ? p1 : p2;
-        intersection_point = r.origin + r.direction * p;
-    }
-
-    return Collision(p * r.direction.length(), intersection_point + geo.center * (-1), p > 0);
-}
-
-struct Camera
-{
-    vec2 direction;
-    point2 position;
-    double focal_length;
-    double sensor_size;
-
-    Camera(vec2 dir, point2 pos, double focal_length, double sensor_size) : direction{dir}, position{pos}, focal_length{focal_length}, sensor_size{sensor_size} {}
-    vec2 view_dir(double image_space_x)
-    {
-        double dir_angle = std::atan(direction.y / direction.x);
-        double y = -image_space_x * sensor_size + .5 * sensor_size;
-        vec2 local = vec2(focal_length, y).normalize();
-
-        vec2 world_space_view_dir(std::cos(dir_angle) * local.x - std::sin(dir_angle) * local.y,
-                                  std::sin(dir_angle) * local.x + std::cos(dir_angle) * local.y);
-
-        return world_space_view_dir;
-    }
-
-    void outpainting(std::vector<double> depth, std::vector<bool> hits, std::vector<std::vector<bool>> &out_hits)
-    {
-        uint width = out_hits.at(0).size();
-        uint height = out_hits.size();
-
-        double object_height = .5;
-        double image_plane_width = sensor_size / focal_length;
-        double image_plane_height = image_plane_width / ASPECT;
-        //std::cout << image_plane_height << std::endl;
-
-        for (int i = 0; i < width; i++)
-        {
-            if (hits.at(i))
-            {
-                double image_space_x = i / static_cast<double>(width) + .5 / width;
-                double image_plane_vector_y = -image_space_x * sensor_size + .5 * sensor_size;
-                double image_plane_distance = vec2(focal_length, image_plane_vector_y).length() / focal_length;
-
-                double apparent_height = object_height / depth.at(i) * image_plane_distance;
-
-                for (int j = 0; j < height; j++)
-                {
-                    // pixel position in 0 to 1 image space
-                    double image_space_y = j / static_cast<double>(height) + .5 / height;
-                    double off_center = std::abs(.5 - image_space_y) * image_plane_height;
-                    if (off_center < apparent_height)
-                        out_hits.at(j).at(i) = true;
-                }
-            }
-        }
-    }
-};
 
 double diffuse_shading(vec2 pos, vec2 normal, vec2 light_pos)
 {
@@ -251,14 +114,13 @@ int main()
     Camera cam(vec2(1, 0), point2(0, 0), 35, 35);
 
     //containers for the scene objects
-    std::vector<Wall> walls = {};
-    std::vector<Circle> circles = {};
+    std::vector<std::unique_ptr<SceneGeometry>> scene = {};
     
     // scene definition
-    circles.push_back(Circle(point2(5, 0), 1));
+    scene.push_back(std::make_unique<Circle>(point2(5, 0), 1));
 
-    walls.push_back(Wall(vec2(2, -1), point2(4, 3), 1));
-    walls.push_back(Wall(vec2(1, .5), point2(4, -3), 2));
+    scene.push_back(std::make_unique<Wall>(vec2(2, -1), point2(4, 3), 1));
+    scene.push_back(std::make_unique<Wall>(vec2(1, .5), point2(4, -3), 2));
 
     double pixel_aspect = 2.3;
     int resolution = 50;
@@ -287,23 +149,15 @@ int main()
             // create placeholder collision with highest possible distance and no intersection
             Collision col = Collision(DBL_MAX, vec2(0, 0), false);
 
-            // check all walls for collision. update col if collision is closer than current closest collision
-            for (int i = 0; i < walls.size(); i++)
+            // check all scene objects for a collision closer to the camera than the current closest collision
+            for (int i = 0; i < scene.size(); i++)
             {
-                Collision wall_col = ray_wall_intersect(camera_ray, walls.at(i));
+                Collision wall_col = scene.at(i)->intersect(camera_ray);
 
                 if (wall_col.hit == true && wall_col.distance < col.distance)
                     col = wall_col;
             }
 
-            // check all circles for intersection with camera ray
-            for (int i = 0; i < circles.size(); i++)
-            {
-                Collision circle_col = ray_circle_intersect(camera_ray, circles.at(i));
-
-                if (circle_col.hit == true && circle_col.distance < col.distance)
-                    col = circle_col;
-            }
 
             //a collision was found. Col is the closest intersection.
             if (col.hit)
