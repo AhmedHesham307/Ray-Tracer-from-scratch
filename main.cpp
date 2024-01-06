@@ -7,7 +7,9 @@
 #include "vec2.h"
 #include "scene.h"
 
-#define ASPECT (16. / 9)
+const int SCREEN_WIDTH = 640;
+const int SCREEN_HEIGHT = 480;
+constexpr float aspect = 4 / 3;
 // ascii art color map from https://paulbourke.net/dataformats/asciiart/
 const std::vector<char> cmap = {'$', '@', 'B', '%', '8', '&', 'W', 'M', '#', '*', 'o', 'a', 'h', 'k', 'b', 'd', 'p', 'q', 'w', 'm', 'Z', 'O', '0', 'Q', 'L', 'C', 'J', 'U', 'Y', 'X', 'z', 'c', 'v', 'u', 'n', 'x', 'r', 'j', 'f', 't', '/', '\\', '|', '(', ')', '1', '{', '}', '[', ']', '?', '-', '_', '+', '~', '<', '>', 'i', '!', 'l', 'I', ';', ':', ',', '"', '^', '`', '\'', '.'};
 
@@ -29,33 +31,40 @@ enum DisplayMode
     shaded
 };
 
-
-
-
-
 double diffuse_shading(vec2 pos, vec2 normal, vec2 light_pos)
 {
     vec2 light_dir = (light_pos - pos).normalize();
     return light_dir.dot(normal.normalize());
 }
 
-void create_shaded_frame_buffer(const std::vector<vec2>& positions, const std::vector<vec2>& normals, const std::vector<bool>& hits, std::vector<double>& shaded){
-    
-    for(int i = 0; i < positions.size(); i++){
-        if(hits[i]){
+void create_shaded_frame_buffer(const std::vector<vec2> &positions, const std::vector<vec2> &normals, const std::vector<bool> &hits, std::vector<double> &shaded)
+{
+
+    for (int i = 0; i < positions.size(); i++)
+    {
+        if (hits[i])
+        {
             shaded[i] = diffuse_shading(positions[i], normals[i], vec2(0, 2));
-        }else{
+        }
+        else
+        {
             shaded[i] = -1;
         }
     }
 }
 
-void print_shaded_buffer2d_stencil(const std::vector<double>& shaded, const std::vector<std::vector<bool>> stencil){
-    for(int i = 0; i < stencil.size(); i++){
-        for(int j = 0; j < shaded.size(); j++){
-            if(stencil.at(i).at(j)){
+void print_shaded_buffer2d_stencil(const std::vector<double> &shaded, const std::vector<std::vector<bool>> stencil)
+{
+    for (int i = 0; i < stencil.size(); i++)
+    {
+        for (int j = 0; j < shaded.size(); j++)
+        {
+            if (stencil.at(i).at(j))
+            {
                 std::cout << sample_cmap(shaded.at(j));
-            }else{
+            }
+            else
+            {
                 std::cout << ' ';
             }
         }
@@ -109,13 +118,96 @@ void print_bool_buffer2d(const std::vector<std::vector<bool>> buffer)
     }
 }
 
-int main()
+int main(int argc, char *args[])
 {
+    // SDL setup adapted from the resource linked in the task description
+    // https://lazyfoo.net/tutorials/SDL/01_hello_SDL/index2.php
+    SDL_Window *window = NULL;
+    SDL_Surface *screenSurface = NULL;
+    if (SDL_Init(SDL_INIT_VIDEO) < 0)
+    {
+        printf("SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
+    }
+    else
+    {
+        // Create window
+        window = SDL_CreateWindow("SDL Tutorial", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
+        if (window == NULL)
+        {
+            printf("Window could not be created! SDL_Error: %s\n", SDL_GetError());
+        }
+        else
+        {
+            SDL_Surface *surface = SDL_CreateRGBSurface(0, SCREEN_WIDTH, SCREEN_HEIGHT, 32, 0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF);
+            if (!surface)
+            {
+                std::cerr << "Surface creation failed: " << SDL_GetError() << std::endl;
+                SDL_DestroyWindow(window);
+                SDL_Quit();
+                return 1;
+            }
+            // Get window surface
+            screenSurface = SDL_GetWindowSurface(window);
+            SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+            if (!renderer)
+            {
+                std::cerr << "Renderer creation failed: " << SDL_GetError() << std::endl;
+                SDL_FreeSurface(surface);
+                SDL_DestroyWindow(window);
+                SDL_Quit();
+                return 1;
+            }
+
+            for (int y = 0; y < SCREEN_HEIGHT; ++y)
+            {
+                for (int x = 0; x < SCREEN_WIDTH; ++x)
+                {
+                    Uint32 *pixel = static_cast<Uint32 *>(surface->pixels) + y * surface->pitch / 4 + x;
+                    *pixel = SDL_MapRGB(surface->format, ((float)x) / SCREEN_WIDTH * 255, ((float)y) / SCREEN_HEIGHT * 255, 0); // Set pixel to red
+                }
+            }
+
+            SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
+            if (!texture)
+            {
+                std::cerr << "Texture creation failed: " << SDL_GetError() << std::endl;
+                SDL_DestroyRenderer(renderer);
+                SDL_FreeSurface(surface);
+                SDL_DestroyWindow(window);
+                SDL_Quit();
+                return 1;
+            }
+            // Hack to get window to stay up
+            SDL_Event e;
+            bool quit = false;
+            while (quit == false)
+            {
+                SDL_RenderClear(renderer);
+
+                // Render the texture
+                SDL_RenderCopy(renderer, texture, NULL, NULL);
+
+                // Update the window surface
+                SDL_RenderPresent(renderer);
+                while (SDL_PollEvent(&e))
+                {
+                    if (e.type == SDL_QUIT)
+                        quit = true;
+                }
+            }
+            SDL_DestroyTexture(texture);
+            SDL_DestroyRenderer(renderer);
+            SDL_FreeSurface(surface);
+            SDL_DestroyWindow(window);
+            SDL_Quit();
+        }
+    }
+
     Camera cam(vec2(1, 0), point2(0, 0), 35, 35);
 
-    //containers for the scene objects
+    // containers for the scene objects
     std::vector<std::unique_ptr<SceneGeometry>> scene = {};
-    
+
     // scene definition
     scene.push_back(std::make_unique<Circle>(point2(5, 0), 1));
 
@@ -158,8 +250,7 @@ int main()
                     col = wall_col;
             }
 
-
-            //a collision was found. Col is the closest intersection.
+            // a collision was found. Col is the closest intersection.
             if (col.hit)
             {
                 hits[i] = true;
@@ -168,7 +259,7 @@ int main()
                 positions[i] = camera_ray.origin + camera_ray.direction * col.distance;
             }
         }
-        std::vector<std::vector<bool>> hits2d(resolution / (pixel_aspect * ASPECT), std::vector<bool>(resolution, false));
+        std::vector<std::vector<bool>> hits2d(resolution / (pixel_aspect * aspect), std::vector<bool>(resolution, false));
         std::vector<double> shaded_buffer(resolution, 0);
 
         switch (mode)

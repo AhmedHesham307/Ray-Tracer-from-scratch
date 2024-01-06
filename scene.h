@@ -58,47 +58,18 @@ struct Camera
     double sensor_size;
 
     Camera(vec2 dir, point2 pos, double focal_length, double sensor_size) : direction{dir}, position{pos}, focal_length{focal_length}, sensor_size{sensor_size} {}
-    vec2 view_dir(double image_space_x)
-    {
-        double dir_angle = std::atan(direction.y / direction.x);
-        double y = -image_space_x * sensor_size + .5 * sensor_size;
-        vec2 local = vec2(focal_length, y).normalize();
 
-        vec2 world_space_view_dir(std::cos(dir_angle) * local.x - std::sin(dir_angle) * local.y,
-                                  std::sin(dir_angle) * local.x + std::cos(dir_angle) * local.y);
+    /*
+    map a position in the image space to a ray originating from the camera
+    */
+    vec2 view_dir(double image_space_x);
 
-        return world_space_view_dir;
-    }
-
-    void outpainting(std::vector<double> depth, std::vector<bool> hits, std::vector<std::vector<bool>> &out_hits)
-    {
-        uint width = out_hits.at(0).size();
-        uint height = out_hits.size();
-
-        double object_height = .5;
-        double image_plane_width = sensor_size / focal_length;
-        double image_plane_height = image_plane_width / (16. / 9);
-        //std::cout << image_plane_height << std::endl;
-
-        for (int i = 0; i < width; i++)
-        {
-            if (hits.at(i))
-            {
-                double image_space_x = i / static_cast<double>(width) + .5 / width;
-                double image_plane_vector_y = -image_space_x * sensor_size + .5 * sensor_size;
-                double image_plane_distance = vec2(focal_length, image_plane_vector_y).length() / focal_length;
-
-                double apparent_height = object_height / depth.at(i) * image_plane_distance;
-
-                for (int j = 0; j < height; j++)
-                {
-                    // pixel position in 0 to 1 image space
-                    double image_space_y = j / static_cast<double>(height) + .5 / height;
-                    double off_center = std::abs(.5 - image_space_y) * image_plane_height;
-                    if (off_center < apparent_height)
-                        out_hits.at(j).at(i) = true;
-                }
-            }
-        }
-    }
+    /*
+    create a stencil for outpainting the one dimensional raytracer depth output
+    to a two dimensional image. Objects that are closer to the camera should
+    appear larger in the 2nd image dimension. The booleans of the 2d stencil
+    indicate, whether this pixel should be filled with the stretched output from
+    the shading of the object or with background.
+    */
+    void outpainting(std::vector<double> depth, std::vector<bool> hits, std::vector<std::vector<bool>> &out_hits);
 };
