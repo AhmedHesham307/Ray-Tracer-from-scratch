@@ -2,6 +2,8 @@
 #include <vector>
 #include <cmath>
 #include <float.h>
+#include <SDL.h>
+#include "vec2.h"
 
 #define ASPECT (16. / 9)
 // ascii art color map from https://paulbourke.net/dataformats/asciiart/
@@ -11,7 +13,7 @@ char sample_cmap(double val)
 {
     val = val <= 1 ? val : 1;
     val = val >= 0 ? val : 0;
-    val = 1- val;
+    val = 1 - val;
     int index = val * ((double)cmap.size());
     if (index == cmap.size())
         index--;
@@ -24,63 +26,6 @@ enum DisplayMode
     outpainted,
     shaded
 };
-
-struct vec2
-{
-
-    double x;
-    double y;
-    vec2(double x_val, double y_val) : x{x_val}, y{y_val} {}
-
-    double length()
-    {
-        return std::sqrt(x * x + y * y);
-    }
-
-    vec2 normalize()
-    {
-        double length = std::sqrt(x * x + y * y);
-        return vec2(x / length, y / length);
-    }
-
-    double dot(const vec2 other)
-    {
-        return x * other.x + y * other.y;
-    }
-
-    double vec2_cross(const vec2 other)
-    {
-        return x * other.y - y * other.x;
-    }
-};
-
-vec2 operator+(vec2 v1, const vec2 v2)
-{
-    v1.x = v1.x + v2.x;
-    v1.y = v1.y + v2.y;
-    return v1;
-}
-
-vec2 operator-(vec2 v1, const vec2 v2)
-{
-    v1.x = v1.x - v2.x;
-    v1.y = v1.y - v2.y;
-    return v1;
-}
-
-vec2 operator*(vec2 v1, const vec2 v2)
-{
-    v1.x = v1.x * v2.x;
-    v1.y = v1.y * v2.y;
-    return v1;
-}
-
-vec2 operator*(vec2 v1, double t)
-{
-    v1.x = v1.x * t;
-    v1.y = v1.y * t;
-    return v1;
-}
 
 using point2 = vec2;
 
@@ -305,10 +250,11 @@ int main()
 {
     Camera cam(vec2(1, 0), point2(0, 0), 35, 35);
 
+    //containers for the scene objects
     std::vector<Wall> walls = {};
     std::vector<Circle> circles = {};
-    // walls.push_back(Wall(vec2(0, -1), vec2(4., 1.), 1));
-    // walls.push_back(Wall(vec2(0, -1), vec2(2.5, 0), 1));
+    
+    // scene definition
     circles.push_back(Circle(point2(5, 0), 1));
 
     walls.push_back(Wall(vec2(2, -1), point2(4, 3), 1));
@@ -350,6 +296,7 @@ int main()
                     col = wall_col;
             }
 
+            // check all circles for intersection with camera ray
             for (int i = 0; i < circles.size(); i++)
             {
                 Collision circle_col = ray_circle_intersect(camera_ray, circles.at(i));
@@ -358,6 +305,7 @@ int main()
                     col = circle_col;
             }
 
+            //a collision was found. Col is the closest intersection.
             if (col.hit)
             {
                 hits[i] = true;

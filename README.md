@@ -1,6 +1,13 @@
 # Raytracing Project
 ### by Advanced Programming Team 85
-
+## Second Sprint
+1. New cmake based build procedure: 
+    1. Make sure you have install SDL. You can install this library through `sudo apt install libsdl2-dev`. 
+    2. `mkdir build && cd build` to create the build directory and switch to that directory.
+    3. `cmake ..` to configure the project.
+    4. `make` to build the project.
+    5. `./RaytracerADP` to run the executable.
+## First Sprint
 This is the result of the first sprint. Our implementation supports all the features from the requirements:
 1. Definition of a camera, rays and scene objects. A camera is a struct that has a member function to create rays originating at the camera. The most important members of a camera are the position and the orientation (as an angle in radians). A ray is generated first in local space of the camera based on the lens properties and then transformed to world space by applying the rotation and the translation of the camera to it.
 2. There are multiple one-dimensional vector containers for storing the scene depth, whether an object was hit by the camera ray, and the normal vector of the object that was hit.
