@@ -14,18 +14,18 @@ struct vec2
     public:
     vec2(double x_val, double y_val) : x{x_val}, y{y_val} {}
 
-    double length();
+    double length() const;
     
-    vec2 normalize();
+    vec2 normalize() const;
     
-    double dot(const vec2 other);
+    double dot(const vec2 other) const;
     
-    double cross(const vec2 other);
+    double cross(const vec2 other) const;
 
-    vec2 operator+(vec2 other);
-    vec2 operator-(vec2 other);
-    vec2 operator*(vec2 other);
-    vec2 operator*(double d);
+    vec2 operator+(const vec2 other) const;
+    vec2 operator-(const vec2 other) const;
+    vec2 operator*(const vec2 other) const;
+    vec2 operator*(const double d) const;
 };
 
 using point2 = vec2;

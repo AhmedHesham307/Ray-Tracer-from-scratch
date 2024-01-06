@@ -20,7 +20,7 @@ struct Collision
 
 class SceneGeometry{
     public:
-    virtual Collision intersect(ray r) = 0;
+    virtual Collision intersect(ray r) const = 0;
 
     virtual ~SceneGeometry(){}
 };
@@ -33,7 +33,7 @@ class Wall : public SceneGeometry
 
     public:
     Wall(vec2 direction, point2 origin, double upper_bound) : direction{direction}, origin{origin}, upper_bound{upper_bound} {}
-    Collision intersect(ray r) override;
+    Collision intersect(ray r) const override;
 };
 
 
@@ -43,7 +43,7 @@ class Circle : public SceneGeometry
     double radius;
     public:
     Circle(point2 center, double radius) : center{center}, radius{radius} {}
-    Collision intersect(ray r) override;
+    Collision intersect(ray r) const override;
 };
 
 
@@ -62,7 +62,7 @@ struct Camera
     /*
     map a position in the image space to a ray originating from the camera
     */
-    vec2 view_dir(double image_space_x);
+    vec2 view_dir(double image_space_x) const;
 
     /*
     create a stencil for outpainting the one dimensional raytracer depth output

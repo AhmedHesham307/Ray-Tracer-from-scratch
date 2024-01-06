@@ -1,6 +1,6 @@
 #include "scene.h"
 
-Collision Wall::intersect(ray r)
+Collision Wall::intersect(ray r) const
 {
 
     // check determinant so we do not attempt to solve an unsolvable system (otherwise divide by zero will occur)
@@ -25,7 +25,7 @@ Collision Wall::intersect(ray r)
     return Collision(r.direction.length() * p1, normal, hit);
 }
 
-Collision Circle::intersect(ray r)
+Collision Circle::intersect(ray r) const
 {
     vec2 z = r.origin + center * (-1);
 
@@ -56,7 +56,7 @@ Collision Circle::intersect(ray r)
     return Collision(p * r.direction.length(), intersection_point + center * (-1), p > 0);
 }
 
-vec2 Camera::view_dir(double image_space_x)
+vec2 Camera::view_dir(double image_space_x) const
 {
     double dir_angle = std::atan(direction.y / direction.x);
     double y = -image_space_x * sensor_size + .5 * sensor_size;
@@ -73,9 +73,9 @@ void Camera::outpainting(std::vector<double> depth, std::vector<bool> hits, std:
     uint width = out_hits.at(0).size();
     uint height = out_hits.size();
 
-    double object_height = .5;
+    double object_height = 1;
     double image_plane_width = sensor_size / focal_length;
-    double image_plane_height = image_plane_width / (16. / 9);
+    double image_plane_height = image_plane_width / (4. / 3);
     // std::cout << image_plane_height << std::endl;
 
     for (int i = 0; i < width; i++)
