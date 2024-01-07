@@ -96,6 +96,8 @@ int main(int argc, char *args[])
 
     int frame_number = 0;
 
+    int mouse_previous_x, mouse_previous_y = 0;
+
     std::vector<int64_t> total_times = {};
     std::vector<int64_t> rt_times = {};
     std::vector<int64_t> outpainting_times = {};
@@ -180,6 +182,20 @@ int main(int argc, char *args[])
             bool quit = false;
             while (quit == false)
             {
+                int mouse_x, mouse_y = 0;
+                SDL_GetMouseState(&mouse_x, &mouse_y);
+
+                if(frame_number == 0){
+                    mouse_previous_x = mouse_x;
+                    mouse_previous_y = mouse_y;
+                }
+
+                int x_delta = mouse_x - mouse_previous_x;
+                mouse_previous_x = mouse_x;
+                mouse_previous_y = mouse_y;
+
+                cam.rotate(-x_delta * .001);
+                
                 while (SDL_PollEvent(&e))
                 {
                     if (e.type == SDL_QUIT)

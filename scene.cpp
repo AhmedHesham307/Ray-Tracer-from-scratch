@@ -123,3 +123,9 @@ void Camera::right(){
 void Camera::left(){
     position = position - right_vec() * movement_speed;
 }
+
+void Camera::rotate(double angle){
+    double current_angle = std::atan(direction.y / direction.x);
+    double new_angle = current_angle + angle;
+    direction = vec2(std::cos(new_angle), std::sin(new_angle));
+}

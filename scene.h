@@ -81,4 +81,6 @@ struct Camera
     void backward();
     void left();
     void right();
+
+    void rotate(double angle);
 };
