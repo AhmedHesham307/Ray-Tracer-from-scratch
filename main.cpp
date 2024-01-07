@@ -1,5 +1,5 @@
 #include <iostream>
-
+#include <omp.h>
 #include <cmath>
 #include <float.h>
 #include <SDL.h>
@@ -7,9 +7,12 @@
 #include <algorithm>
 #include "vec2.h"
 #include "scene.h"
+#include <numeric>
+#include <chrono>
 
 const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
+const bool performance_logging = true;
 constexpr float aspect = 4 / 3;
 
 enum DisplayMode
@@ -74,10 +77,8 @@ void rt_scene(const std::vector<std::unique_ptr<SceneGeometry>> &scene, const Ca
             depth[i] = col.distance;
             normals[i] = col.normal;
             positions[i] = camera_ray.origin + camera_ray.direction * col.distance;
-            
         }
     }
-
 }
 
 int main(int argc, char *args[])
@@ -92,6 +93,15 @@ int main(int argc, char *args[])
 
     scene.push_back(std::make_unique<Wall>(vec2(2, -1), point2(4, 3), 1));
     scene.push_back(std::make_unique<Wall>(vec2(1, .5), point2(4, -3), 2));
+
+    int frame_number = 0;
+
+    std::vector<int64_t> total_times = {};
+    std::vector<int64_t> rt_times = {};
+    std::vector<int64_t> outpainting_times = {};
+    std::vector<int64_t> shading_times = {};
+    std::vector<int64_t> surface_update_times = {};
+    std::vector<int64_t> sdl_rendering_times = {};
 
     // SDL setup adapted from the resource linked in the task description
     // https://lazyfoo.net/tutorials/SDL/01_hello_SDL/index2.php
@@ -162,7 +172,7 @@ int main(int argc, char *args[])
             std::vector<vec2> normals(SCREEN_WIDTH, vec2(1, 0));
             std::vector<vec2> positions(SCREEN_WIDTH, vec2(0, 0));
 
-            //screen buffer
+            // screen buffer
             std::vector<std::vector<bool>> hits2d(SCREEN_HEIGHT, std::vector<bool>(SCREEN_WIDTH, false));
             std::vector<double> shaded_buffer(SCREEN_WIDTH, 0);
 
@@ -170,24 +180,76 @@ int main(int argc, char *args[])
             bool quit = false;
             while (quit == false)
             {
+                while (SDL_PollEvent(&e))
+                {
+                    if (e.type == SDL_QUIT)
+                        quit = true;
+
+                    else if (e.type == SDL_KEYDOWN)
+                    {
+                        // Select surfaces based on key press
+                        switch (e.key.keysym.sym)
+                        {
+                        case SDLK_UP:
+                            cam.forward();
+                            break;
+
+                        case SDLK_DOWN:
+                            cam.backward();
+                            break;
+
+                        case SDLK_LEFT:
+                            cam.left();
+                            break;
+
+                        case SDLK_RIGHT:
+                            cam.right();
+                            break;
+
+                        default:
+                            break;
+                        }
+                    }
+                }
+
+                for (int i = 0; i < SCREEN_HEIGHT; i++)
+                {
+                    for (int j = 0; j < SCREEN_WIDTH; j++)
+                    {
+                        hits2d.at(i).at(j) = false;
+                    }
+                }
+
+                for (int j = 0; j < SCREEN_WIDTH; j++)
+                {
+                    depth.at(j) = -1;
+                }
+
+                auto rt_start_time = std::chrono::high_resolution_clock::now();
                 // Render and create the outpainted stencil
                 rt_scene(scene, cam, hits, depth, normals, positions);
+                auto rt_end_time = std::chrono::high_resolution_clock::now();
                 cam.outpainting(depth, hits, hits2d);
+                auto outpainting_end_time = std::chrono::high_resolution_clock::now();
 
                 // Create the shaded 1d image strip
                 shaded_frame_buffer(hits, normals, positions, shaded_buffer);
-
-                for(int i = 0; i < SCREEN_HEIGHT; i++){
-                    for(int j = 0; j < SCREEN_WIDTH; j++){
+                auto shading_end_time = std::chrono::high_resolution_clock::now();
+                for (int i = 0; i < SCREEN_HEIGHT; i++)
+                {
+                    for (int j = 0; j < SCREEN_WIDTH; j++)
+                    {
                         Uint32 *pixel = static_cast<Uint32 *>(surface->pixels) + i * surface->pitch / 4 + j;
 
                         double val = 0;
-                        if(hits2d.at(i).at(j)){
+                        if (hits2d.at(i).at(j))
+                        {
                             val = shaded_buffer.at(j);
                         }
-                        *pixel = SDL_MapRGB(surface->format, val * 255, val * 255, val * 255); 
+                        *pixel = SDL_MapRGB(surface->format, val * 255, val * 255, val * 255);
                     }
                 }
+                auto surface_end_time = std::chrono::high_resolution_clock::now();
 
                 // Clear before update
                 SDL_RenderClear(renderer);
@@ -197,20 +259,40 @@ int main(int argc, char *args[])
 
                 // Update the window surface
                 SDL_RenderPresent(renderer);
-                while (SDL_PollEvent(&e))
-                {
-                    if (e.type == SDL_QUIT)
-                        quit = true;
-                }
+                auto render_end_time = std::chrono::high_resolution_clock::now();
+
+                // append the measured times 
+                auto rt_time = std::chrono::duration_cast<std::chrono::microseconds>(rt_end_time - rt_start_time);
+                rt_times.push_back(rt_time.count());
+                auto outpainting_time = std::chrono::duration_cast<std::chrono::microseconds>(outpainting_end_time - rt_end_time);
+                outpainting_times.push_back(outpainting_time.count());
+                auto shading_time = std::chrono::duration_cast<std::chrono::microseconds>(shading_end_time - outpainting_end_time);
+                shading_times.push_back(shading_time.count());
+                auto surface_time = std::chrono::duration_cast<std::chrono::milliseconds>(surface_end_time - shading_end_time);
+                surface_update_times.push_back(surface_time.count());
+                auto render_time = std::chrono::duration_cast<std::chrono::milliseconds>(render_end_time - surface_end_time);
+                sdl_rendering_times.push_back(render_time.count());
+                auto total_time = std::chrono::duration_cast<std::chrono::milliseconds>(render_end_time - rt_start_time);
+                total_times.push_back(total_time.count());
+                frame_number++;
             }
             SDL_DestroyTexture(texture);
             SDL_DestroyRenderer(renderer);
             SDL_FreeSurface(surface);
             SDL_DestroyWindow(window);
             SDL_Quit();
+
+            if (performance_logging)
+            {
+                std::cout << "Number of frames: " << frame_number << " : " << (std::accumulate(total_times.begin(), total_times.end(), 0) / total_times.size()) << " ms average frame time\n";
+                std::cout << "   " << (std::accumulate(rt_times.begin(), rt_times.end(), 0) / rt_times.size()) << " microseconds for average raytracing\n";
+                std::cout << "   " << ((std::accumulate(outpainting_times.begin(), outpainting_times.end(), 0) / outpainting_times.size())) << " microseconds for average outpainting\n";
+                std::cout << "   " << (std::accumulate(shading_times.begin(), shading_times.end(), 0) / shading_times.size()) << " microseconds for average shading\n";
+                std::cout << "   " << (std::accumulate(surface_update_times.begin(), surface_update_times.end(), 0) / surface_update_times.size()) << " milliseconds for surface average update\n";
+                std::cout << "   " << ((std::accumulate(sdl_rendering_times.begin(), sdl_rendering_times.end(), 0) / sdl_rendering_times.size())) << " milliseconds for average SDL rendering\n";
+            }
+
             return 0;
         }
     }
-
-    
 }

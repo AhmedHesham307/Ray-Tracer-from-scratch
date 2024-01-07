@@ -2,12 +2,14 @@
 ### by Advanced Programming Team 85
 ## Second Sprint
 1. New cmake based build procedure: 
-    1. Make sure you have install SDL. You can install this library through `sudo apt install libsdl2-dev`. 
+    1. Make sure you have install SDL for rendering to screen. You can install this library through `sudo apt install libsdl2-dev`.
     2. `mkdir build && cd build` to create the build directory and switch to that directory.
     3. `cmake ..` to configure the project.
     4. `make` to build the project.
     5. `./RaytracerADP` to run the executable.
 2. Refactor the scene geometry description to utilize object oriented programming features. Both `Circle` and `Box` now inherit from `SceneGeometry`, a purely virtual class providing an interface for intersection with rays. 
+3. Implement rendering to screen with SDL. Yes, the performance is actually this bad.
+
 ## First Sprint
 This is the result of the first sprint. Our implementation supports all the features from the requirements:
 1. Definition of a camera, rays and scene objects. A camera is a struct that has a member function to create rays originating at the camera. The most important members of a camera are the position and the orientation (as an angle in radians). A ray is generated first in local space of the camera based on the lens properties and then transformed to world space by applying the rotation and the translation of the camera to it.

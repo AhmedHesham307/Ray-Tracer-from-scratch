@@ -99,3 +99,27 @@ void Camera::outpainting(std::vector<double> depth, std::vector<bool> hits, std:
         }
     }
 }
+
+vec2 Camera::forward_vec(){
+    return direction;
+}
+
+vec2 Camera::right_vec(){
+    return vec2(direction.y, -direction.x);
+}
+
+void Camera::forward(){
+    position = position + forward_vec() * movement_speed;
+}
+
+void Camera::backward(){
+    position = position - forward_vec() * movement_speed;
+}
+
+void Camera::right(){
+    position = position + right_vec() * movement_speed;
+}
+
+void Camera::left(){
+    position = position - right_vec() * movement_speed;
+}

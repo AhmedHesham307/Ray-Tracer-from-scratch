@@ -56,6 +56,10 @@ struct Camera
     point2 position;
     double focal_length;
     double sensor_size;
+    const float movement_speed = .1;
+
+    vec2 forward_vec();
+    vec2 right_vec();
 
     Camera(vec2 dir, point2 pos, double focal_length, double sensor_size) : direction{dir}, position{pos}, focal_length{focal_length}, sensor_size{sensor_size} {}
 
@@ -72,4 +76,9 @@ struct Camera
     the shading of the object or with background.
     */
     void outpainting(std::vector<double> depth, std::vector<bool> hits, std::vector<std::vector<bool>> &out_hits);
+
+    void forward();
+    void backward();
+    void left();
+    void right();
 };
