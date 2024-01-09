@@ -10,15 +10,15 @@ include_directories(${SDL2_INCLUDE_DIRS})
 
 set(SOURCES
     main.cpp
-    vec2.cpp
+    vec.cpp
     scene.cpp
 )
 
 set(HEADERS
-    vec2.h
+    vec.h
     scene.h
 )
 
 add_executable(RaytracerADP ${SOURCES} ${HEADERS})
-target_compile_options(RaytracerADP PUBLIC -O3)
+target_compile_options(RaytracerADP PUBLIC -O3 -g)
 target_link_libraries(RaytracerADP ${SDL2_LIBRARIES})

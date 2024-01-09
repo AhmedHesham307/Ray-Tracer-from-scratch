@@ -5,7 +5,7 @@
 #include <SDL.h>
 #include <memory>
 #include <algorithm>
-#include "vec2.h"
+
 #include "scene.h"
 #include <numeric>
 #include <chrono>
@@ -15,37 +15,51 @@ const int SCREEN_HEIGHT = 480;
 const bool performance_logging = true;
 constexpr float aspect = 4 / 3;
 
-enum DisplayMode
-{
-    simple,
-    outpainted,
-    shaded
-};
-
 double diffuse_shading(vec2 pos, vec2 normal, vec2 light_pos)
 {
     vec2 light_dir = (light_pos - pos).normalize();
+    // This is a standard, physically based(tm) diffuse lighting calculation
     double lambertian = light_dir.dot(normal.normalize());
     return lambertian > 0 ? lambertian : 0;
 }
 
-void shaded_frame_buffer(const std::vector<bool> &hits, const std::vector<vec2> &normals, const std::vector<vec2> &positions, std::vector<double> &shaded)
+void shaded_frame_buffer(const std::vector<bool> &hits, const std::vector<vec2> &normals, const std::vector<vec2> &positions, std::vector<RGB> &shaded, std::vector<int> &hit_objects, std::vector<std::unique_ptr<SceneGeometry>> &scene)
 {
 
     for (int i = 0; i < positions.size(); i++)
     {
-        if (hits[i])
+        if (hit_objects.at(i) >= 0)
         {
-            shaded[i] = diffuse_shading(positions[i], normals[i], vec2(0, 2));
+            double val = diffuse_shading(positions[i], normals[i], vec2(0, 2));
+            shaded[i] = scene.at(hit_objects.at(i))->get_color() * val;
         }
         else
         {
-            shaded[i] = -1;
+            shaded[i] = RGB(0, 0, 0);
         }
     }
 }
 
-void rt_scene(const std::vector<std::unique_ptr<SceneGeometry>> &scene, const Camera &cam, std::vector<bool> &hits, std::vector<double> &depth, std::vector<vec2> &normals, std::vector<vec2> &positions)
+Collision find_closest_hit(const std::vector<std::unique_ptr<SceneGeometry>> &scene, ray r)
+{
+    // create placeholder collision with highest possible distance and no intersection
+    Collision col = Collision(DBL_MAX, vec2(0, 0), false);
+
+    // check all scene objects for a collision closer to the camera than the current closest collision
+    for (int j = 0; j < scene.size(); j++)
+    {
+        Collision wall_col = scene.at(j)->intersect(r);
+
+        if (wall_col.hit == true && wall_col.distance < col.distance)
+        {
+            col = wall_col;
+            col.hit_object_index = j;
+        }
+    }
+    return col;
+}
+
+void rt_scene(const std::vector<std::unique_ptr<SceneGeometry>> &scene, const Camera &cam, std::vector<bool> &hits, std::vector<int> &hit_object, std::vector<double> &depth, std::vector<vec2> &normals, std::vector<vec2> &positions)
 {
     double step = (1. / static_cast<double>(SCREEN_WIDTH));
     for (int i = 0; i < SCREEN_WIDTH; i++)
@@ -57,19 +71,7 @@ void rt_scene(const std::vector<std::unique_ptr<SceneGeometry>> &scene, const Ca
         ray camera_ray(sample_dir, cam.position);
 
         // std::cout << camera_ray.direction.x << " " << camera_ray.direction.y << std::endl;
-
-        // create placeholder collision with highest possible distance and no intersection
-        Collision col = Collision(DBL_MAX, vec2(0, 0), false);
-
-        // check all scene objects for a collision closer to the camera than the current closest collision
-        for (int i = 0; i < scene.size(); i++)
-        {
-            Collision wall_col = scene.at(i)->intersect(camera_ray);
-
-            if (wall_col.hit == true && wall_col.distance < col.distance)
-                col = wall_col;
-        }
-
+        Collision col = find_closest_hit(scene, camera_ray);
         // a collision was found. Col is the closest intersection.
         if (col.hit)
         {
@@ -77,6 +79,7 @@ void rt_scene(const std::vector<std::unique_ptr<SceneGeometry>> &scene, const Ca
             depth[i] = col.distance;
             normals[i] = col.normal;
             positions[i] = camera_ray.origin + camera_ray.direction * col.distance;
+            hit_object[i] = col.hit_object_index;
         }
     }
 }
@@ -89,10 +92,10 @@ int main(int argc, char *args[])
     std::vector<std::unique_ptr<SceneGeometry>> scene = {};
 
     // scene definition
-    scene.push_back(std::make_unique<Circle>(point2(5, 0), 1));
+    scene.push_back(std::make_unique<Circle>(point2(5, 0), 1, RGB(1, 0, 0)));
 
-    scene.push_back(std::make_unique<Wall>(vec2(2, -1), point2(4, 3), 1));
-    scene.push_back(std::make_unique<Wall>(vec2(1, .5), point2(4, -3), 2));
+    scene.push_back(std::make_unique<Wall>(vec2(2, -1), point2(4, 3), 1, RGB(0, 0, 1)));
+    scene.push_back(std::make_unique<Wall>(vec2(1, .5), point2(4, -3), 2, RGB(0, 1, 0)));
 
     int frame_number = 0;
 
@@ -108,7 +111,6 @@ int main(int argc, char *args[])
     // SDL setup adapted from the resource linked in the task description
     // https://lazyfoo.net/tutorials/SDL/01_hello_SDL/index2.php
     SDL_Window *window = NULL;
-    SDL_Surface *screenSurface = NULL;
     if (SDL_Init(SDL_INIT_VIDEO) < 0)
     {
         printf("SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
@@ -133,7 +135,6 @@ int main(int argc, char *args[])
                 return 1;
             }
 
-            screenSurface = SDL_GetWindowSurface(window);
             SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
             if (!renderer)
             {
@@ -143,16 +144,16 @@ int main(int argc, char *args[])
                 SDL_Quit();
                 return 1;
             }
-            /* Texture modification test
+            /* Texture modification test*/
             for (int y = 0; y < SCREEN_HEIGHT; ++y)
             {
                 for (int x = 0; x < SCREEN_WIDTH; ++x)
                 {
                     Uint32 *pixel = static_cast<Uint32 *>(surface->pixels) + y * surface->pitch / 4 + x;
-                    *pixel = SDL_MapRGB(surface->format, ((float)x) / SCREEN_WIDTH * 255, ((float)y) / SCREEN_HEIGHT * 255, 0); // Set pixel to red
+                    *pixel = SDL_MapRGBA(surface->format, 255, ((float)x) / SCREEN_WIDTH * 255, ((float)y) / SCREEN_HEIGHT * 255, 0);
                 }
             }
-            */
+
             SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
             if (!texture)
             {
@@ -173,18 +174,16 @@ int main(int argc, char *args[])
             std::vector<bool> hits(SCREEN_WIDTH, false);
             std::vector<vec2> normals(SCREEN_WIDTH, vec2(1, 0));
             std::vector<vec2> positions(SCREEN_WIDTH, vec2(0, 0));
+            std::vector<int> hit_object(SCREEN_WIDTH, -1);
 
             // screen buffer
             std::vector<std::vector<bool>> hits2d(SCREEN_HEIGHT, std::vector<bool>(SCREEN_WIDTH, false));
-            std::vector<double> shaded_buffer(SCREEN_WIDTH, 0);
+            std::vector<RGB> shaded_buffer(SCREEN_WIDTH, RGB(0, 0, 0));
 
             SDL_Event e;
             bool quit = false;
             while (quit == false)
             {
-
-
-                
 
                 while (SDL_PollEvent(&e))
                 {
@@ -250,30 +249,38 @@ int main(int argc, char *args[])
                 for (int j = 0; j < SCREEN_WIDTH; j++)
                 {
                     depth.at(j) = -1;
+                    hit_object.at(j) = -1;
                 }
 
                 auto rt_start_time = std::chrono::high_resolution_clock::now();
-                // Render and create the outpainted stencil
-                rt_scene(scene, cam, hits, depth, normals, positions);
+                // std::cout << "start raytracing\n";
+                //  Render and create the outpainted stencil
+                rt_scene(scene, cam, hits, hit_object, depth, normals, positions);
                 auto rt_end_time = std::chrono::high_resolution_clock::now();
+                // std::cout << "end raytracing\n";
                 cam.outpainting(depth, hits, hits2d);
                 auto outpainting_end_time = std::chrono::high_resolution_clock::now();
 
                 // Create the shaded 1d image strip
-                shaded_frame_buffer(hits, normals, positions, shaded_buffer);
+                shaded_frame_buffer(hits, normals, positions, shaded_buffer, hit_object, scene);
+                // std::cout << "shading and outpainting done\n";
                 auto shading_end_time = std::chrono::high_resolution_clock::now();
+
+                Uint8 *pixels = (Uint8 *)surface->pixels;
                 for (int i = 0; i < SCREEN_HEIGHT; i++)
                 {
                     for (int j = 0; j < SCREEN_WIDTH; j++)
                     {
-                        Uint32 *pixel = static_cast<Uint32 *>(surface->pixels) + i * surface->pitch / 4 + j;
 
-                        double val = 0;
-                        if (hits2d.at(i).at(j))
-                        {
-                            val = shaded_buffer.at(j);
-                        }
-                        *pixel = SDL_MapRGB(surface->format, val * 255, val * 255, val * 255);
+                        RGB val = shaded_buffer.at(j);
+                        if (!hits2d.at(i).at(j))
+                            val = RGB(0, 0, 0);
+
+                        Uint8 *r_address = 4 * i * SCREEN_WIDTH + 4 * j + pixels;
+                        r_address[0] = val.z * 255; // blue
+                        r_address[1] = val.y * 255; // green
+                        r_address[2] = val.x * 255; // red
+                        r_address[3] = 255;         // alpha
                     }
                 }
                 auto surface_end_time = std::chrono::high_resolution_clock::now();

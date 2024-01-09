@@ -2,6 +2,7 @@
 
 Collision Wall::intersect(ray r) const
 {
+    
 
     // check determinant so we do not attempt to solve an unsolvable system (otherwise divide by zero will occur)
     double det = (r.direction.x * (-direction.y) - (-direction.x * r.direction.y));

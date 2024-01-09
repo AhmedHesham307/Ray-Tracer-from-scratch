@@ -1,4 +1,4 @@
-#include "vec2.h"
+#include "vec.h"
 #include <vector>
 
 struct ray
@@ -16,13 +16,14 @@ struct Collision
     vec2 normal;
     bool hit;
     Collision(double distance, vec2 normal, bool hit) : distance{distance}, normal{normal}, hit{hit} {}
+    int hit_object_index;
 };
 
 class SceneGeometry{
     public:
     virtual Collision intersect(ray r) const = 0;
-
     virtual ~SceneGeometry(){}
+    virtual RGB get_color() const=0;
 };
 
 class Wall : public SceneGeometry
@@ -30,10 +31,12 @@ class Wall : public SceneGeometry
     vec2 direction;
     point2 origin;
     double upper_bound;
+    RGB color;
 
     public:
-    Wall(vec2 direction, point2 origin, double upper_bound) : direction{direction}, origin{origin}, upper_bound{upper_bound} {}
+    Wall(vec2 direction, point2 origin, double upper_bound, RGB color=RGB(1,1,1)) : direction{direction}, origin{origin}, upper_bound{upper_bound}, color{color} {}
     Collision intersect(ray r) const override;
+    RGB get_color() const{return color;}
 };
 
 
@@ -41,9 +44,11 @@ class Circle : public SceneGeometry
 {
     point2 center;
     double radius;
+    RGB color;
     public:
-    Circle(point2 center, double radius) : center{center}, radius{radius} {}
+    Circle(point2 center, double radius, RGB color=RGB(1,1,1)) : center{center}, radius{radius}, color{color} {}
     Collision intersect(ray r) const override;
+    RGB get_color() const{return color;}
 };
 
 

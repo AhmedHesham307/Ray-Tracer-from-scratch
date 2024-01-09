@@ -29,4 +29,26 @@ struct vec2
 };
 
 using point2 = vec2;
+
+struct vec3
+{
+    double x;
+    double y;
+    double z;
+    public:
+    vec3(double x_val, double y_val, double z_val) : x{x_val}, y{y_val}, z{z_val}{}
+
+    double length() const;
+    
+    vec3 normalize() const;
+    
+    double dot(const vec3 other) const;
+
+    vec3 operator+(const vec3 other) const;
+    vec3 operator-(const vec3 other) const;
+    vec3 operator*(const vec3 other) const;
+    vec3 operator*(const double d) const;
+};
+
+using RGB = vec3;
 #endif
