@@ -8,7 +8,7 @@
     4. `make` to build the project.
     5. `./RaytracerADP` to run the executable.
 2. Refactor the scene geometry description to utilize object oriented programming features. Both `Circle` and `Box` now inherit from `SceneGeometry`, a purely virtual class providing an interface for intersection with rays. 
-3. Implement rendering to screen with SDL. Yes, the performance is actually this bad.
+3. Implement movement using the arrow keys/WASD and camera rotation using the mouse.
 
 ## First Sprint
 This is the result of the first sprint. Our implementation supports all the features from the requirements:

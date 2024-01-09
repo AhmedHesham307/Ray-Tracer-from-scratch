@@ -123,6 +123,7 @@ int main(int argc, char *args[])
         }
         else
         {
+            // create the surface. The surface is the buffer we write our color values to.
             SDL_Surface *surface = SDL_CreateRGBSurface(0, SCREEN_WIDTH, SCREEN_HEIGHT, 32, 0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF);
             if (!surface)
             {
@@ -131,7 +132,7 @@ int main(int argc, char *args[])
                 SDL_Quit();
                 return 1;
             }
-            // Get window surface
+
             screenSurface = SDL_GetWindowSurface(window);
             SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
             if (!renderer)
@@ -152,7 +153,6 @@ int main(int argc, char *args[])
                 }
             }
             */
-
             SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
             if (!texture)
             {
@@ -167,7 +167,7 @@ int main(int argc, char *args[])
             Define Buffers for holding raytracing output
             The per-pixel scene information is translated to an image in another step, shading
             Note that all scene buffers are only one dimensional
-            The 2d image is created by stretching the 1d information dependant on the depth
+            The 2d image is created by stretching the 1d information dependant on the depth. See Camera::Outpainting for details
             */
             std::vector<double> depth(SCREEN_WIDTH, -1);
             std::vector<bool> hits(SCREEN_WIDTH, false);
@@ -182,28 +182,19 @@ int main(int argc, char *args[])
             bool quit = false;
             while (quit == false)
             {
-                int mouse_x, mouse_y = 0;
-                SDL_GetMouseState(&mouse_x, &mouse_y);
 
-                if(frame_number == 0){
-                    mouse_previous_x = mouse_x;
-                    mouse_previous_y = mouse_y;
-                }
 
-                int x_delta = mouse_x - mouse_previous_x;
-                mouse_previous_x = mouse_x;
-                mouse_previous_y = mouse_y;
-
-                cam.rotate(-x_delta * .001);
                 
+
                 while (SDL_PollEvent(&e))
                 {
                     if (e.type == SDL_QUIT)
                         quit = true;
 
+                    // handle key presses
                     else if (e.type == SDL_KEYDOWN)
                     {
-                        // Select surfaces based on key press
+
                         switch (e.key.keysym.sym)
                         {
                         case SDLK_UP:
@@ -222,12 +213,32 @@ int main(int argc, char *args[])
                             cam.right();
                             break;
 
+                        case SDLK_a:
+                            cam.left();
+                            break;
+
+                        case SDLK_s:
+                            cam.backward();
+                            break;
+
+                        case SDLK_d:
+                            cam.right();
+                            break;
+
+                        case SDLK_w:
+                            cam.forward();
+                            break;
+
                         default:
                             break;
                         }
                     }
-                }
 
+                    else if (e.type == SDL_MOUSEMOTION)
+                    {
+                        cam.rotate(-e.motion.xrel * .001);
+                    }
+                }
                 for (int i = 0; i < SCREEN_HEIGHT; i++)
                 {
                     for (int j = 0; j < SCREEN_WIDTH; j++)
@@ -277,7 +288,7 @@ int main(int argc, char *args[])
                 SDL_RenderPresent(renderer);
                 auto render_end_time = std::chrono::high_resolution_clock::now();
 
-                // append the measured times 
+                // append the measured times
                 auto rt_time = std::chrono::duration_cast<std::chrono::microseconds>(rt_end_time - rt_start_time);
                 rt_times.push_back(rt_time.count());
                 auto outpainting_time = std::chrono::duration_cast<std::chrono::microseconds>(outpainting_end_time - rt_end_time);
@@ -292,12 +303,14 @@ int main(int argc, char *args[])
                 total_times.push_back(total_time.count());
                 frame_number++;
             }
+            // properly dispose of the resources allocated by the SDL backend
             SDL_DestroyTexture(texture);
             SDL_DestroyRenderer(renderer);
             SDL_FreeSurface(surface);
             SDL_DestroyWindow(window);
             SDL_Quit();
 
+            // log the average time taken by every step
             if (performance_logging)
             {
                 std::cout << "Number of frames: " << frame_number << " : " << (std::accumulate(total_times.begin(), total_times.end(), 0) / total_times.size()) << " ms average frame time\n";

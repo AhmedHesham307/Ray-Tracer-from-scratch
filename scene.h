@@ -50,8 +50,9 @@ class Circle : public SceneGeometry
 
 
 
-struct Camera
-{
+struct Camera{
+
+
     vec2 direction;
     point2 position;
     double focal_length;
