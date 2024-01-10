@@ -26,6 +26,10 @@ struct vec2
     vec2 operator-(const vec2 other) const;
     vec2 operator*(const vec2 other) const;
     vec2 operator*(const double d) const;
+
+    static vec2 lerp(const vec2 first, const vec2 second, double d);
+
+    vec2 reflect(const vec2 normal) const;
 };
 
 using point2 = vec2;
@@ -48,6 +52,8 @@ struct vec3
     vec3 operator-(const vec3 other) const;
     vec3 operator*(const vec3 other) const;
     vec3 operator*(const double d) const;
+
+    static vec3 lerp(const vec3 first, const vec3 second, double d);
 };
 
 using RGB = vec3;

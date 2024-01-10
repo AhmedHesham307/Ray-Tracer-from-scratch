@@ -45,6 +45,19 @@ vec2 vec2::operator*(const double d) const
     return result;
 }
 
+vec2 vec2::lerp(vec2 first, vec2 second, double d){
+    return vec2(first.x + d * (second.x - first.x), first.y + d * (second.y - first.y));
+}
+
+vec2 vec2::reflect(const vec2 normal) const{
+    // assuming your normal vectors are normalized is one of the seven deadly sins
+    vec2 normalized_normal = normal.normalize();
+    vec2 normalized_vec = this->normalize();
+
+    double normal_component = 2 * normalized_vec.dot(normalized_normal);
+    return normalized_vec - normalized_normal * normal_component;
+}
+
 double vec3::length() const
 {
     return std::sqrt(dot(*this));
@@ -72,3 +85,9 @@ vec3 vec3::operator*(const vec3 other) const{
 vec3 vec3::operator*(const double d) const{
     return vec3(x * d, y * d, z * d);
 }
+
+vec3 vec3::lerp(vec3 first, vec3 second, double d){
+    return vec3(first.x + d * (second.x - first.x), first.y + d * (second.y - first.y), first.z + d * (second.z - first.z));
+}
+
+

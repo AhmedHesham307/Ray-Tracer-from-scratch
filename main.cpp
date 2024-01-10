@@ -13,6 +13,8 @@
 #define RENDER_SCENE
 //#define TEXTURE_TEST
 
+#define LIGHT_POS point2(2, 0)
+
 const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
 const bool performance_logging = true;
@@ -33,7 +35,7 @@ void shaded_frame_buffer(const std::vector<bool> &hits, const std::vector<vec2> 
     {
         if (hit_objects.at(i) >= 0)
         {
-            double val = diffuse_shading(positions[i], normals[i], vec2(0, 2));
+            double val = diffuse_shading(positions[i], normals[i], LIGHT_POS);
             shaded[i] = scene.at(hit_objects.at(i))->get_color() * val;
         }
         else
@@ -62,7 +64,17 @@ Collision find_closest_hit(const std::vector<std::unique_ptr<SceneGeometry>> &sc
     return col;
 }
 
-void rt_scene(const std::vector<std::unique_ptr<SceneGeometry>> &scene, const Camera &cam, std::vector<bool> &hits, std::vector<int> &hit_object, std::vector<double> &depth, std::vector<vec2> &normals, std::vector<vec2> &positions)
+RGB recursive_ray_tracing(const std::vector<std::unique_ptr<SceneGeometry>> &scene, ray r, double &depth){
+    Collision col = find_closest_hit(scene, r);
+    if(col.hit_object_index < 0){
+        return RGB(0,0,0);
+    }else{
+        depth = col.distance;
+        return scene.at(col.hit_object_index)->get_color() * diffuse_shading(r.origin + r.direction * col.distance, col.normal, LIGHT_POS);
+    }
+}
+
+void rt_scene(const std::vector<std::unique_ptr<SceneGeometry>> &scene, const Camera &cam, std::vector<double> &depth, std::vector<RGB> &frame_buffer)
 {
     double step = (1. / static_cast<double>(SCREEN_WIDTH));
     for (int i = 0; i < SCREEN_WIDTH; i++)
@@ -73,17 +85,7 @@ void rt_scene(const std::vector<std::unique_ptr<SceneGeometry>> &scene, const Ca
         vec2 sample_dir = cam.view_dir(progress);
         ray camera_ray(sample_dir, cam.position);
 
-        // std::cout << camera_ray.direction.x << " " << camera_ray.direction.y << std::endl;
-        Collision col = find_closest_hit(scene, camera_ray);
-        // a collision was found. Col is the closest intersection.
-        if (col.hit)
-        {
-            hits[i] = true;
-            depth[i] = col.distance;
-            normals[i] = col.normal;
-            positions[i] = camera_ray.origin + camera_ray.direction * col.distance;
-            hit_object[i] = col.hit_object_index;
-        }
+        frame_buffer.at(i) = recursive_ray_tracing(scene, camera_ray, depth.at(i));
     }
 }
 
@@ -177,14 +179,9 @@ int main(int argc, char *args[])
             We might switch to recursive ray tracing with nice reflections for sprint 3.
             */
             std::vector<double> depth(SCREEN_WIDTH, -1);
-            std::vector<bool> hits(SCREEN_WIDTH, false);
-            std::vector<vec2> normals(SCREEN_WIDTH, vec2(1, 0));
-            std::vector<vec2> positions(SCREEN_WIDTH, vec2(0, 0));
-            std::vector<int> hit_object(SCREEN_WIDTH, -1);
-
             // screen buffer
             std::vector<std::vector<bool>> hits2d(SCREEN_HEIGHT, std::vector<bool>(SCREEN_WIDTH, false));
-            std::vector<RGB> shaded_buffer(SCREEN_WIDTH, RGB(0, 0, 0));
+            std::vector<RGB> frame_buffer(SCREEN_WIDTH, RGB(0, 0, 0));
 
             SDL_Event e;
             bool quit = false;
@@ -270,20 +267,18 @@ int main(int argc, char *args[])
                 for (int j = 0; j < SCREEN_WIDTH; j++)
                 {
                     depth.at(j) = -1;
-                    hit_object.at(j) = -1;
                 }
 
                 auto rt_start_time = std::chrono::high_resolution_clock::now();
                 // std::cout << "start raytracing\n";
                 //  Render and create the outpainted stencil
-                rt_scene(scene, cam, hits, hit_object, depth, normals, positions);
+                rt_scene(scene, cam, depth, frame_buffer);
                 auto rt_end_time = std::chrono::high_resolution_clock::now();
                 // std::cout << "end raytracing\n";
-                cam.outpainting(depth, hits, hits2d);
+                cam.outpainting(depth, hits2d);
                 auto outpainting_end_time = std::chrono::high_resolution_clock::now();
 
-                // Create the shaded 1d image strip
-                shaded_frame_buffer(hits, normals, positions, shaded_buffer, hit_object, scene);
+
                 // std::cout << "shading and outpainting done\n";
                 auto shading_end_time = std::chrono::high_resolution_clock::now();
 
@@ -295,7 +290,7 @@ int main(int argc, char *args[])
                     for (int j = 0; j < SCREEN_WIDTH; j++)
                     {
 
-                        RGB val = shaded_buffer.at(j);
+                        RGB val = frame_buffer.at(j);
                         if (!hits2d.at(i).at(j))
                             val = RGB(0, 0, 0);
                         Uint32 *pixel = static_cast<Uint32 *>(surface->pixels) + i * surface->pitch / 4 + j;

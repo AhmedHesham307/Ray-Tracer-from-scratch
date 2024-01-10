@@ -18,13 +18,16 @@ struct Collision
     bool hit;
     Collision(double distance, vec2 normal, bool hit) : distance{distance}, normal{normal}, hit{hit} {}
     int hit_object_index;
+
 };
 
 class SceneGeometry{
+    RGB color;
     public:
     virtual Collision intersect(ray r) const = 0;
+    SceneGeometry(RGB color) : color(RGB(color.x, color.y, color.z)){};
     virtual ~SceneGeometry(){}
-    virtual RGB get_color() const=0;
+    RGB get_color() {return color;}
 };
 
 class Wall : public SceneGeometry
@@ -32,12 +35,12 @@ class Wall : public SceneGeometry
     vec2 direction;
     point2 origin;
     double upper_bound;
-    RGB color;
+
 
     public:
-    Wall(vec2 direction, point2 origin, double upper_bound, RGB color=RGB(1,1,1)) : direction{direction}, origin{origin}, upper_bound{upper_bound}, color{color} {}
+    Wall(vec2 direction, point2 origin, double upper_bound, RGB color=RGB(1,1,1)) : SceneGeometry(color), direction{direction}, origin{origin}, upper_bound{upper_bound} {}
     Collision intersect(ray r) const override;
-    RGB get_color() const{return color;}
+
 };
 
 
@@ -45,11 +48,11 @@ class Circle : public SceneGeometry
 {
     point2 center;
     double radius;
-    RGB color;
+
     public:
-    Circle(point2 center, double radius, RGB color=RGB(1,1,1)) : center{center}, radius{radius}, color{color} {}
+    Circle(point2 center, double radius, RGB color=RGB(1,1,1)) : SceneGeometry(color), center{center}, radius{radius} {}
     Collision intersect(ray r) const override;
-    RGB get_color() const{return color;}
+
 };
 
 
@@ -82,7 +85,7 @@ struct Camera{
     indicate, whether this pixel should be filled with the stretched output from
     the shading of the object or with background.
     */
-    void outpainting(std::vector<double> depth, std::vector<bool> hits, std::vector<std::vector<bool>> &out_hits);
+    void outpainting(std::vector<double> depth, std::vector<std::vector<bool>> &out_hits);
 
     void forward();
     void backward();

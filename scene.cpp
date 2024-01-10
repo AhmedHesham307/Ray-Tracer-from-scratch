@@ -69,7 +69,7 @@ vec2 Camera::view_dir(double image_space_x) const
     return world_space_view_dir;
 }
 
-void Camera::outpainting(std::vector<double> depth, std::vector<bool> hits, std::vector<std::vector<bool>> &out_hits)
+void Camera::outpainting(std::vector<double> depth, std::vector<std::vector<bool>> &out_hits)
 {
     uint width = out_hits.at(0).size();
     uint height = out_hits.size();
@@ -81,7 +81,7 @@ void Camera::outpainting(std::vector<double> depth, std::vector<bool> hits, std:
 
     for (int i = 0; i < width; i++)
     {
-        if (hits.at(i))
+        if (depth.at(i) >= 0)
         {
             double image_space_x = i / static_cast<double>(width) + .5 / width;
             double image_plane_vector_y = -image_space_x * sensor_size + .5 * sensor_size;
