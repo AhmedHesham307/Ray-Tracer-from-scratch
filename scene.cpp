@@ -59,7 +59,7 @@ Collision Circle::intersect(ray r) const
 
 vec2 Camera::view_dir(double image_space_x) const
 {
-    double dir_angle = std::atan(direction.y / direction.x);
+    double dir_angle = std::atan2(direction.y, direction.x);
     double y = -image_space_x * sensor_size + .5 * sensor_size;
     vec2 local = vec2(focal_length, y).normalize();
 
@@ -126,7 +126,7 @@ void Camera::left(){
 }
 
 void Camera::rotate(double angle){
-    double current_angle = std::atan(direction.y / direction.x);
+    double current_angle = std::atan2(direction.y, direction.x);
     double new_angle = current_angle + angle;
     direction = vec2(std::cos(new_angle), std::sin(new_angle));
 }

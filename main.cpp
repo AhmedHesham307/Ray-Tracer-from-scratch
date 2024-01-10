@@ -10,6 +10,9 @@
 #include <numeric>
 #include <chrono>
 
+#define RENDER_SCENE
+//#define TEXTURE_TEST
+
 const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
 const bool performance_logging = true;
@@ -99,8 +102,6 @@ int main(int argc, char *args[])
 
     int frame_number = 0;
 
-    int mouse_previous_x, mouse_previous_y = 0;
-
     std::vector<int64_t> total_times = {};
     std::vector<int64_t> rt_times = {};
     std::vector<int64_t> outpainting_times = {};
@@ -144,7 +145,8 @@ int main(int argc, char *args[])
                 SDL_Quit();
                 return 1;
             }
-            /* Texture modification test*/
+            // Texture modification test
+            #if defined(TEXTURE_TEST)
             for (int y = 0; y < SCREEN_HEIGHT; ++y)
             {
                 for (int x = 0; x < SCREEN_WIDTH; ++x)
@@ -153,6 +155,7 @@ int main(int argc, char *args[])
                     *pixel = SDL_MapRGBA(surface->format, 255, ((float)x) / SCREEN_WIDTH * 255, ((float)y) / SCREEN_HEIGHT * 255, 0);
                 }
             }
+            #endif
 
             SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
             if (!texture)
@@ -164,11 +167,14 @@ int main(int argc, char *args[])
                 SDL_Quit();
                 return 1;
             }
+
             /*
             Define Buffers for holding raytracing output
             The per-pixel scene information is translated to an image in another step, shading
             Note that all scene buffers are only one dimensional
             The 2d image is created by stretching the 1d information dependant on the depth. See Camera::Outpainting for details
+
+            We might switch to recursive ray tracing with nice reflections for sprint 3.
             */
             std::vector<double> depth(SCREEN_WIDTH, -1);
             std::vector<bool> hits(SCREEN_WIDTH, false);
@@ -182,6 +188,9 @@ int main(int argc, char *args[])
 
             SDL_Event e;
             bool quit = false;
+
+            int mouse_x, mouse_y = 0;
+
             while (quit == false)
             {
 
@@ -228,14 +237,13 @@ int main(int argc, char *args[])
                             cam.forward();
                             break;
 
+                        case SDLK_q:
+                            quit = true;
+                            break;
+
                         default:
                             break;
                         }
-                    }
-
-                    else if (e.type == SDL_MOUSEMOTION)
-                    {
-                        cam.rotate(-e.motion.xrel * .001);
                     }
                 }
                 for (int i = 0; i < SCREEN_HEIGHT; i++)
@@ -245,6 +253,19 @@ int main(int argc, char *args[])
                         hits2d.at(i).at(j) = false;
                     }
                 }
+                /*
+                The code for rotating the mouse. We would have liked to implement camera movement like in first person games,
+                but unfortunately, the functionality necessary to relative use mouse movements without movements being blocked 
+                by the window borders is not available for WSL2 GUI windows. We tried both capturing the cursor and warping the 
+                cursor to the center of the window. Neither works in WSL2, but they break the close window button. 
+                The final product is kinda janky, but it allows for unlimited
+                rotation, unlike the other implementations, which would have been limited in how far the camera can be rotated.
+                Also, this solution does not mess with the close window button, like the other implementations did.
+                */
+                int x, y = 0;
+                SDL_GetMouseState(&x, &y);
+                float input = (x - 400) / 400.;
+                cam.rotate(-input * .003);
 
                 for (int j = 0; j < SCREEN_WIDTH; j++)
                 {
@@ -266,6 +287,8 @@ int main(int argc, char *args[])
                 // std::cout << "shading and outpainting done\n";
                 auto shading_end_time = std::chrono::high_resolution_clock::now();
 
+
+                #if defined(RENDER_SCENE)
                 Uint8 *pixels = (Uint8 *)surface->pixels;
                 for (int i = 0; i < SCREEN_HEIGHT; i++)
                 {
@@ -275,14 +298,11 @@ int main(int argc, char *args[])
                         RGB val = shaded_buffer.at(j);
                         if (!hits2d.at(i).at(j))
                             val = RGB(0, 0, 0);
-
-                        Uint8 *r_address = 4 * i * SCREEN_WIDTH + 4 * j + pixels;
-                        r_address[0] = val.z * 255; // blue
-                        r_address[1] = val.y * 255; // green
-                        r_address[2] = val.x * 255; // red
-                        r_address[3] = 255;         // alpha
+                        Uint32 *pixel = static_cast<Uint32 *>(surface->pixels) + i * surface->pitch / 4 + j;
+                        *pixel = SDL_MapRGBA(surface->format, 255, val.x *255, val.y * 255, val.z*255);
                     }
                 }
+                #endif
                 auto surface_end_time = std::chrono::high_resolution_clock::now();
 
                 // Clear before update

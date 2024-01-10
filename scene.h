@@ -1,5 +1,6 @@
 #include "vec.h"
 #include <vector>
+#include <iostream>
 
 struct ray
 {
