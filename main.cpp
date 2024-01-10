@@ -28,22 +28,6 @@ double diffuse_shading(vec2 pos, vec2 normal, vec2 light_pos)
     return lambertian > 0 ? lambertian : 0;
 }
 
-void shaded_frame_buffer(const std::vector<bool> &hits, const std::vector<vec2> &normals, const std::vector<vec2> &positions, std::vector<RGB> &shaded, std::vector<int> &hit_objects, std::vector<std::unique_ptr<SceneGeometry>> &scene)
-{
-
-    for (int i = 0; i < positions.size(); i++)
-    {
-        if (hit_objects.at(i) >= 0)
-        {
-            double val = diffuse_shading(positions[i], normals[i], LIGHT_POS);
-            shaded[i] = scene.at(hit_objects.at(i))->get_color() * val;
-        }
-        else
-        {
-            shaded[i] = RGB(0, 0, 0);
-        }
-    }
-}
 
 Collision find_closest_hit(const std::vector<std::unique_ptr<SceneGeometry>> &scene, ray r)
 {
@@ -70,7 +54,7 @@ RGB recursive_ray_tracing(const std::vector<std::unique_ptr<SceneGeometry>> &sce
         return RGB(0,0,0);
     }else{
         depth = col.distance;
-        return scene.at(col.hit_object_index)->get_color() * diffuse_shading(r.origin + r.direction * col.distance, col.normal, LIGHT_POS);
+        return scene.at(col.hit_object_index)->get_material().color * diffuse_shading(r.origin + r.direction * col.distance, col.normal, LIGHT_POS);
     }
 }
 
@@ -97,10 +81,10 @@ int main(int argc, char *args[])
     std::vector<std::unique_ptr<SceneGeometry>> scene = {};
 
     // scene definition
-    scene.push_back(std::make_unique<Circle>(point2(5, 0), 1, RGB(1, 0, 0)));
+    scene.push_back(std::make_unique<Circle>(point2(5, 0), 1, Material(RGB(1, 0, 0),.5)));
 
-    scene.push_back(std::make_unique<Wall>(vec2(2, -1), point2(4, 3), 1, RGB(0, 0, 1)));
-    scene.push_back(std::make_unique<Wall>(vec2(1, .5), point2(4, -3), 2, RGB(0, 1, 0)));
+    scene.push_back(std::make_unique<Wall>(vec2(2, -1), point2(4, 3), 1, Material(RGB(0, 0, 1), .5)));
+    scene.push_back(std::make_unique<Wall>(vec2(1, .5), point2(4, -3), 2, Material(RGB(0, 1, 0), 0)));
 
     int frame_number = 0;
 

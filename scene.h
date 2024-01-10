@@ -21,13 +21,20 @@ struct Collision
 
 };
 
-class SceneGeometry{
+struct Material{
     RGB color;
+    // how much reflections contribute to the color of the material
+    double metallic;
+    Material(RGB color, double metallic) : color{color}, metallic{metallic}{}
+};
+
+class SceneGeometry{
+    Material mat;
     public:
     virtual Collision intersect(ray r) const = 0;
-    SceneGeometry(RGB color) : color(RGB(color.x, color.y, color.z)){};
+    SceneGeometry(Material mat) : mat(mat){};
     virtual ~SceneGeometry(){}
-    RGB get_color() {return color;}
+    Material get_material() {return mat;}
 };
 
 class Wall : public SceneGeometry
@@ -38,7 +45,7 @@ class Wall : public SceneGeometry
 
 
     public:
-    Wall(vec2 direction, point2 origin, double upper_bound, RGB color=RGB(1,1,1)) : SceneGeometry(color), direction{direction}, origin{origin}, upper_bound{upper_bound} {}
+    Wall(vec2 direction, point2 origin, double upper_bound, Material mat=Material(RGB(1,1,1), .1)) : SceneGeometry(mat), direction{direction}, origin{origin}, upper_bound{upper_bound} {}
     Collision intersect(ray r) const override;
 
 };
@@ -50,13 +57,10 @@ class Circle : public SceneGeometry
     double radius;
 
     public:
-    Circle(point2 center, double radius, RGB color=RGB(1,1,1)) : SceneGeometry(color), center{center}, radius{radius} {}
+    Circle(point2 center, double radius, Material mat=Material(RGB(1,1,1), .1)) : SceneGeometry(mat), center{center}, radius{radius} {}
     Collision intersect(ray r) const override;
 
 };
-
-
-
 
 
 struct Camera{
