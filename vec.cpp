@@ -50,7 +50,6 @@ vec2 vec2::lerp(vec2 first, vec2 second, double d){
 }
 
 vec2 vec2::reflect(const vec2 normal) const{
-    // assuming your normal vectors are normalized is one of the seven deadly sins
     vec2 normalized_normal = normal.normalize();
     vec2 normalized_vec = this->normalize();
 

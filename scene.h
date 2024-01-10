@@ -2,6 +2,8 @@
 #include <vector>
 #include <iostream>
 
+#define DEFAULT_MAT Material(RGB(1,1,1), .9, .9, .3, 30)
+
 struct ray
 {
     vec2 direction;
@@ -23,9 +25,17 @@ struct Collision
 
 struct Material{
     RGB color;
+    // how much the object is lit without a light
+    double ambient;
     // how much reflections contribute to the color of the material
     double metallic;
-    Material(RGB color, double metallic) : color{color}, metallic{metallic}{}
+    // strength of the diffuse component
+    double diffuse;
+    // strength of the specular component
+    double specular;
+    // controls specular highlight shape
+    double specular_exponent;
+    Material(RGB color, double metallic=.5, double ambient=.1, double diffuse=.9, double specular=.4, double specular_exponent=50) : color{color}, diffuse{diffuse}, ambient{ambient}, metallic{metallic}, specular{specular}, specular_exponent{specular_exponent}{}
 };
 
 class SceneGeometry{
@@ -45,7 +55,7 @@ class Wall : public SceneGeometry
 
 
     public:
-    Wall(vec2 direction, point2 origin, double upper_bound, Material mat=Material(RGB(1,1,1), .1)) : SceneGeometry(mat), direction{direction}, origin{origin}, upper_bound{upper_bound} {}
+    Wall(vec2 direction, point2 origin, double upper_bound, Material mat=DEFAULT_MAT) : SceneGeometry(mat), direction{direction}, origin{origin}, upper_bound{upper_bound} {}
     Collision intersect(ray r) const override;
 
 };
@@ -57,7 +67,7 @@ class Circle : public SceneGeometry
     double radius;
 
     public:
-    Circle(point2 center, double radius, Material mat=Material(RGB(1,1,1), .1)) : SceneGeometry(mat), center{center}, radius{radius} {}
+    Circle(point2 center, double radius, Material mat=DEFAULT_MAT) : SceneGeometry(mat), center{center}, radius{radius} {}
     Collision intersect(ray r) const override;
 
 };

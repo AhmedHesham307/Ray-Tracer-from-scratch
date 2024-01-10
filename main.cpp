@@ -11,14 +11,17 @@
 #include <chrono>
 
 #define RENDER_SCENE
-//#define TEXTURE_TEST
+// #define TEXTURE_TEST
 
 #define LIGHT_POS point2(2, 0)
+#define OUT_COLOR RGB(.2,.2,.3)
 
 const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
 const bool performance_logging = true;
 constexpr float aspect = 4 / 3;
+
+
 
 double diffuse_shading(vec2 pos, vec2 normal, vec2 light_pos)
 {
@@ -28,6 +31,16 @@ double diffuse_shading(vec2 pos, vec2 normal, vec2 light_pos)
     return lambertian > 0 ? lambertian : 0;
 }
 
+double specular(vec2 pos, vec2 normal, vec2 light_pos, vec2 view_dir){
+    //Blinn-Phong specular
+    view_dir = view_dir.normalize();
+    normal = normal.normalize();
+    vec2 light_dir = (light_pos - pos).normalize();
+
+    vec2 halfway = (view_dir + light_dir).normalize();
+    double result = halfway.dot(normal);
+    return result > 0 ? result : 0;
+}
 
 Collision find_closest_hit(const std::vector<std::unique_ptr<SceneGeometry>> &scene, ray r)
 {
@@ -48,13 +61,35 @@ Collision find_closest_hit(const std::vector<std::unique_ptr<SceneGeometry>> &sc
     return col;
 }
 
-RGB recursive_ray_tracing(const std::vector<std::unique_ptr<SceneGeometry>> &scene, ray r, double &depth){
+RGB recursive_ray_tracing(const std::vector<std::unique_ptr<SceneGeometry>> &scene, ray r, double &depth, int remaining_iterations = 10)
+{
     Collision col = find_closest_hit(scene, r);
-    if(col.hit_object_index < 0){
-        return RGB(0,0,0);
-    }else{
+    if (col.hit_object_index < 0)
+    {
+        return OUT_COLOR;
+    }
+    else
+    {
+        vec2 pos = r.origin + r.direction * col.distance;
+        Material mat = scene.at(col.hit_object_index)->get_material();
         depth = col.distance;
-        return scene.at(col.hit_object_index)->get_material().color * diffuse_shading(r.origin + r.direction * col.distance, col.normal, LIGHT_POS);
+        double diffuse_intensity = diffuse_shading(r.origin + r.direction * col.distance, col.normal, LIGHT_POS);
+        double specular_intensity = std::pow(specular(pos, col.normal, LIGHT_POS, r.direction * (-1)), mat.specular_exponent);
+        RGB local_color = mat.color * (diffuse_intensity * mat.diffuse + specular_intensity * mat.specular + mat.ambient);
+        if (remaining_iterations <= 0)
+        {
+            return local_color;
+        }
+        
+        //start new ray minimally offset from the surface so that the new ray can not hit the surface again
+        point2 start_pos = pos + col.normal * .0001;
+        vec2 reflected_dir = r.direction.reflect(col.normal);
+        ray next_ray = ray(reflected_dir, start_pos);
+        double depth_i_value = 0;
+
+        RGB rt_color = recursive_ray_tracing(scene, next_ray, depth_i_value, remaining_iterations - 1);
+
+        return vec3::lerp(local_color, rt_color, mat.metallic);
     }
 }
 
@@ -81,10 +116,10 @@ int main(int argc, char *args[])
     std::vector<std::unique_ptr<SceneGeometry>> scene = {};
 
     // scene definition
-    scene.push_back(std::make_unique<Circle>(point2(5, 0), 1, Material(RGB(1, 0, 0),.5)));
+    scene.push_back(std::make_unique<Circle>(point2(5, 0), 1, Material(RGB(1, 0, 0), .5)));
 
-    scene.push_back(std::make_unique<Wall>(vec2(2, -1), point2(4, 3), 1, Material(RGB(0, 0, 1), .5)));
-    scene.push_back(std::make_unique<Wall>(vec2(1, .5), point2(4, -3), 2, Material(RGB(0, 1, 0), 0)));
+    scene.push_back(std::make_unique<Wall>(vec2(2, -1), point2(4, 3), 1, Material(RGB(0, 0, 1), 0.5)));
+    scene.push_back(std::make_unique<Wall>(vec2(1, .5), point2(4, -3), 2, Material(RGB(0, 1, 0), 0.5)));
 
     int frame_number = 0;
 
@@ -131,8 +166,8 @@ int main(int argc, char *args[])
                 SDL_Quit();
                 return 1;
             }
-            // Texture modification test
-            #if defined(TEXTURE_TEST)
+// Texture modification test
+#if defined(TEXTURE_TEST)
             for (int y = 0; y < SCREEN_HEIGHT; ++y)
             {
                 for (int x = 0; x < SCREEN_WIDTH; ++x)
@@ -141,7 +176,7 @@ int main(int argc, char *args[])
                     *pixel = SDL_MapRGBA(surface->format, 255, ((float)x) / SCREEN_WIDTH * 255, ((float)y) / SCREEN_HEIGHT * 255, 0);
                 }
             }
-            #endif
+#endif
 
             SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
             if (!texture)
@@ -236,16 +271,16 @@ int main(int argc, char *args[])
                 }
                 /*
                 The code for rotating the mouse. We would have liked to implement camera movement like in first person games,
-                but unfortunately, the functionality necessary to relative use mouse movements without movements being blocked 
-                by the window borders is not available for WSL2 GUI windows. We tried both capturing the cursor and warping the 
-                cursor to the center of the window. Neither works in WSL2, but they break the close window button. 
+                but unfortunately, the functionality necessary to relative use mouse movements without movements being blocked
+                by the window borders is not available for WSL2 GUI windows. We tried both capturing the cursor and warping the
+                cursor to the center of the window. Neither works in WSL2, but they break the close window button.
                 The final product is kinda janky, but it allows for unlimited
                 rotation, unlike the other implementations, which would have been limited in how far the camera can be rotated.
                 Also, this solution does not mess with the close window button, like the other implementations did.
                 */
                 int x, y = 0;
                 SDL_GetMouseState(&x, &y);
-                float input = (x - 400) / 400.;
+                float input = (x - SCREEN_WIDTH / 2) / static_cast<double>(SCREEN_WIDTH / 2);
                 cam.rotate(-input * .003);
 
                 for (int j = 0; j < SCREEN_WIDTH; j++)
@@ -262,12 +297,10 @@ int main(int argc, char *args[])
                 cam.outpainting(depth, hits2d);
                 auto outpainting_end_time = std::chrono::high_resolution_clock::now();
 
-
                 // std::cout << "shading and outpainting done\n";
                 auto shading_end_time = std::chrono::high_resolution_clock::now();
 
-
-                #if defined(RENDER_SCENE)
+#if defined(RENDER_SCENE)
                 Uint8 *pixels = (Uint8 *)surface->pixels;
                 for (int i = 0; i < SCREEN_HEIGHT; i++)
                 {
@@ -276,12 +309,12 @@ int main(int argc, char *args[])
 
                         RGB val = frame_buffer.at(j);
                         if (!hits2d.at(i).at(j))
-                            val = RGB(0, 0, 0);
+                            val = OUT_COLOR;
                         Uint32 *pixel = static_cast<Uint32 *>(surface->pixels) + i * surface->pitch / 4 + j;
-                        *pixel = SDL_MapRGBA(surface->format, 255, val.x *255, val.y * 255, val.z*255);
+                        *pixel = SDL_MapRGBA(surface->format, 255, val.x * 255, val.y * 255, val.z * 255);
                     }
                 }
-                #endif
+#endif
                 auto surface_end_time = std::chrono::high_resolution_clock::now();
 
                 // Clear before update
