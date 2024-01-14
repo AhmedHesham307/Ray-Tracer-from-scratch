@@ -10,6 +10,8 @@
     5. `./RaytracerADP` to run the executable.
 2. Refactor the scene geometry description to utilize object oriented programming features. Both `Circle` and `Box` now inherit from `SceneGeometry`, a purely virtual class providing an interface for intersection with rays. 
 3. Implement movement using the arrow keys/WASD and camera rotation using the mouse. To rotate the camera to the left, move the cursor to the left half of the screen. To rotate right, move the cursor to the right half of the screen. If you do not want to rotate the camera, move the mouse to the center of the screen. We understand that this is janky and kinda suboptimal, but it is the only mouse input that consistently works with WSL2 GUI windows. Warping the cursor to the center of the screen does not work on WSL2, so with standard First-Person-Game-style camera rotation based on the movement (not the position) of the mouse, rotation would be limited by the cursor reaching the edges of the GUI window. The current implementation at least allows for unlimited rotation in every direction.
+To quit the program, press q, or click the close button of the window, or press Ctrl+C in the command window you executed the program in.
+To reset the camera to its starting position, press r.
 4. Color was invented.
 5. The average time taken by every step of the image generation is printed to the console after the program ends.
 6. Implemented the Blinn-Phong local illumination model https://en.wikipedia.org/wiki/Blinn%E2%80%93Phong_reflection_model

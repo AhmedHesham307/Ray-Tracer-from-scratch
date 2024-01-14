@@ -80,12 +80,12 @@ struct Camera{
     point2 position;
     double focal_length;
     double sensor_size;
-    const float movement_speed = .1;
+    double movement_speed;
 
     vec2 forward_vec();
     vec2 right_vec();
 
-    Camera(vec2 dir, point2 pos, double focal_length, double sensor_size) : direction{dir}, position{pos}, focal_length{focal_length}, sensor_size{sensor_size} {}
+    Camera(vec2 dir, point2 pos, double focal_length, double sensor_size, double speed=.1) : direction{dir}, position{pos}, focal_length{focal_length}, sensor_size{sensor_size}, movement_speed{speed} {}
 
     /*
     map a position in the image space to a ray originating from the camera

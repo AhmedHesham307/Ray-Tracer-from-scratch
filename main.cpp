@@ -1,5 +1,4 @@
 #include <iostream>
-#include <omp.h>
 #include <cmath>
 #include <float.h>
 #include <SDL.h>
@@ -111,6 +110,7 @@ void rt_scene(const std::vector<std::unique_ptr<SceneGeometry>> &scene, const Ca
 int main(int argc, char *args[])
 {
     Camera cam(vec2(1, 0), point2(0, 0), 35, 35);
+
 
     // containers for the scene objects
     std::vector<std::unique_ptr<SceneGeometry>> scene = {};
@@ -255,6 +255,10 @@ int main(int argc, char *args[])
 
                         case SDLK_q:
                             quit = true;
+                            break;
+
+                        case SDLK_r:
+                            cam = Camera(vec2(1, 0), point2(0, 0), 35, 35);
                             break;
 
                         default:
