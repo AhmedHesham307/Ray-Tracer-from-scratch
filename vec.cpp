@@ -1,5 +1,5 @@
 #include "vec.h"
-
+// boring vector operator implementations
 double vec2::length() const
 {
     return std::sqrt(x * x + y * y);

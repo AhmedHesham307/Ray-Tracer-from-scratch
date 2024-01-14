@@ -21,7 +21,9 @@ const bool performance_logging = true;
 constexpr float aspect = 4 / 3;
 
 
-
+/*
+* diffuse light intensity
+*/
 double diffuse_shading(vec2 pos, vec2 normal, vec2 light_pos)
 {
     vec2 light_dir = (light_pos - pos).normalize();
@@ -30,6 +32,9 @@ double diffuse_shading(vec2 pos, vec2 normal, vec2 light_pos)
     return lambertian > 0 ? lambertian : 0;
 }
 
+/* 
+* specular light intensity
+*/
 double specular(vec2 pos, vec2 normal, vec2 light_pos, vec2 view_dir){
     //Blinn-Phong specular
     view_dir = view_dir.normalize();
@@ -41,6 +46,9 @@ double specular(vec2 pos, vec2 normal, vec2 light_pos, vec2 view_dir){
     return result > 0 ? result : 0;
 }
 
+/*
+* Find the intersection of a ray with the scene that is closest to the ray origin
+*/
 Collision find_closest_hit(const std::vector<std::unique_ptr<SceneGeometry>> &scene, ray r)
 {
     // create placeholder collision with highest possible distance and no intersection
@@ -60,6 +68,9 @@ Collision find_closest_hit(const std::vector<std::unique_ptr<SceneGeometry>> &sc
     return col;
 }
 
+/*
+* Send out a ray into the scene from a given position. Returns the color of light transported along that ray. Recursively factors in reflections.
+*/
 RGB recursive_ray_tracing(const std::vector<std::unique_ptr<SceneGeometry>> &scene, ray r, double &depth, int remaining_iterations = 10)
 {
     Collision col = find_closest_hit(scene, r);
@@ -92,6 +103,9 @@ RGB recursive_ray_tracing(const std::vector<std::unique_ptr<SceneGeometry>> &sce
     }
 }
 
+/*
+* fill a buffer of colors with the colors seen by a camera in the scene
+*/
 void rt_scene(const std::vector<std::unique_ptr<SceneGeometry>> &scene, const Camera &cam, std::vector<double> &depth, std::vector<RGB> &frame_buffer)
 {
     double step = (1. / static_cast<double>(SCREEN_WIDTH));
@@ -107,6 +121,9 @@ void rt_scene(const std::vector<std::unique_ptr<SceneGeometry>> &scene, const Ca
     }
 }
 
+/*
+* The main loop lives here
+*/
 int main(int argc, char *args[])
 {
     Camera cam(vec2(1, 0), point2(0, 0), 35, 35);

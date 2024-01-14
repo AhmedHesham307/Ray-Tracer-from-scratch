@@ -26,6 +26,9 @@ Collision Wall::intersect(ray r) const
     return Collision(r.direction.length() * p1, normal, hit);
 }
 
+/*
+* ray circle intersection implementation
+*/
 Collision Circle::intersect(ray r) const
 {
     vec2 z = r.origin + center * (-1);
@@ -57,6 +60,7 @@ Collision Circle::intersect(ray r) const
     return Collision(p * r.direction.length(), intersection_point + center * (-1), p > 0);
 }
 
+
 vec2 Camera::view_dir(double image_space_x) const
 {
     double dir_angle = std::atan2(direction.y, direction.x);
@@ -68,6 +72,7 @@ vec2 Camera::view_dir(double image_space_x) const
 
     return world_space_view_dir;
 }
+
 
 void Camera::outpainting(std::vector<double> depth, std::vector<std::vector<bool>> &out_hits)
 {
