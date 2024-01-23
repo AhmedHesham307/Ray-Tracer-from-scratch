@@ -12,21 +12,21 @@
 #define RENDER_SCENE
 // #define TEXTURE_TEST
 
-#define LIGHT_POS point2(2, 0)
+#define LIGHT_POS point3(2, 0, 0)
 #define OUT_COLOR RGB(.2,.2,.3)
 
 const int SCREEN_WIDTH = 640;
-const int SCREEN_HEIGHT = 480;
+// const int cam.image_height = 480;
 const bool performance_logging = true;
-constexpr float aspect = 4 / 3;
-
+constexpr float ASPECT_RATIO = 4 / 3;
+int i = 0;
 
 /*
 * diffuse light intensity
 */
-double diffuse_shading(vec2 pos, vec2 normal, vec2 light_pos)
+double diffuse_shading(vec3 pos, vec3 normal, vec3 light_pos)
 {
-    vec2 light_dir = (light_pos - pos).normalize();
+    vec3 light_dir = (light_pos - pos).normalize();
     // This is a standard, physically based(tm) diffuse lighting calculation
     double lambertian = light_dir.dot(normal.normalize());
     return lambertian > 0 ? lambertian : 0;
@@ -35,13 +35,13 @@ double diffuse_shading(vec2 pos, vec2 normal, vec2 light_pos)
 /* 
 * specular light intensity
 */
-double specular(vec2 pos, vec2 normal, vec2 light_pos, vec2 view_dir){
+double specular(vec3 pos, vec3 normal, vec3 light_pos, vec3 view_dir){
     //Blinn-Phong specular
     view_dir = view_dir.normalize();
     normal = normal.normalize();
-    vec2 light_dir = (light_pos - pos).normalize();
+    vec3 light_dir = (light_pos - pos).normalize();
 
-    vec2 halfway = (view_dir + light_dir).normalize();
+    vec3 halfway = (view_dir + light_dir).normalize();
     double result = halfway.dot(normal);
     return result > 0 ? result : 0;
 }
@@ -52,16 +52,23 @@ double specular(vec2 pos, vec2 normal, vec2 light_pos, vec2 view_dir){
 Collision find_closest_hit(const std::vector<std::unique_ptr<SceneGeometry>> &scene, ray r)
 {
     // create placeholder collision with highest possible distance and no intersection
-    Collision col = Collision(DBL_MAX, vec2(0, 0), false);
+    Collision col = Collision(DBL_MAX, vec3(0, 0, 0), false);
 
     // check all scene objects for a collision closer to the camera than the current closest collision
     for (int j = 0; j < scene.size(); j++)
-    {
-        Collision wall_col = scene.at(j)->intersect(r);
+    {   
+        // std::cout << "ray before ";
+        // r.get_direction().print();
+        // std::cout << std::endl;
+        Collision object_col = scene.at(j)->intersect(r);
 
-        if (wall_col.hit == true && wall_col.distance < col.distance)
+        // std::cout << "ray after ";
+        // r.get_direction().print();
+        // std::cout << std::endl;
+        if (object_col.hit == true && object_col.distance < col.distance)
         {
-            col = wall_col;
+            col = object_col;
+            // std::cout << object_col.distance;
             col.hit_object_index = j;
         }
     }
@@ -71,20 +78,25 @@ Collision find_closest_hit(const std::vector<std::unique_ptr<SceneGeometry>> &sc
 /*
 * Send out a ray into the scene from a given position. Returns the color of light transported along that ray. Recursively factors in reflections.
 */
-RGB recursive_ray_tracing(const std::vector<std::unique_ptr<SceneGeometry>> &scene, ray r, double &depth, int remaining_iterations = 10)
+RGB recursive_ray_tracing(const std::vector<std::unique_ptr<SceneGeometry>> &scene, ray r, 
+                          double &depth, int remaining_iterations = 10)
 {
     Collision col = find_closest_hit(scene, r);
+    
     if (col.hit_object_index < 0)
     {
+        std::cout << "no hit";
         return OUT_COLOR;
     }
     else
     {
-        vec2 pos = r.origin + r.direction * col.distance;
+        std::cout << col.distance << std::endl;
+        vec3 pos = r.get_origin() + r.get_direction() * col.distance;
         Material mat = scene.at(col.hit_object_index)->get_material();
         depth = col.distance;
-        double diffuse_intensity = diffuse_shading(r.origin + r.direction * col.distance, col.normal, LIGHT_POS);
-        double specular_intensity = std::pow(specular(pos, col.normal, LIGHT_POS, r.direction * (-1)), mat.specular_exponent);
+        
+        double diffuse_intensity = diffuse_shading(r.get_origin() + r.get_direction() * col.distance, col.normal, LIGHT_POS);
+        double specular_intensity = std::pow(specular(pos, col.normal, LIGHT_POS, -r.get_direction()), mat.specular_exponent);
         RGB local_color = mat.color * (diffuse_intensity * mat.diffuse + specular_intensity * mat.specular + mat.ambient);
         if (remaining_iterations <= 0)
         {
@@ -92,32 +104,34 @@ RGB recursive_ray_tracing(const std::vector<std::unique_ptr<SceneGeometry>> &sce
         }
         
         //start new ray minimally offset from the surface so that the new ray can not hit the surface again
-        point2 start_pos = pos + col.normal * .0001;
-        vec2 reflected_dir = r.direction.reflect(col.normal);
+        point3 start_pos = pos + col.normal * .0001;
+        vec3 reflected_dir = r.get_direction().reflect(col.normal);
         ray next_ray = ray(reflected_dir, start_pos);
         double depth_i_value = 0;
-
+    
         RGB rt_color = recursive_ray_tracing(scene, next_ray, depth_i_value, remaining_iterations - 1);
-
-        return vec3::lerp(local_color, rt_color, mat.metallic);
+        RGB interp_color;
+        return interp_color.linear_interp(local_color, rt_color, mat.metallic);
     }
 }
 
 /*
 * fill a buffer of colors with the colors seen by a camera in the scene
 */
-void rt_scene(const std::vector<std::unique_ptr<SceneGeometry>> &scene, const Camera &cam, std::vector<double> &depth, std::vector<RGB> &frame_buffer)
+void rt_scene(std::vector<vec3> u,const std::vector<std::unique_ptr<SceneGeometry>> &scene,const Camera &cam,
+              std::vector<std::vector<double>> &depth, std::vector<std::vector<RGB>> &frame_buffer)
 {
-    double step = (1. / static_cast<double>(SCREEN_WIDTH));
-    for (int i = 0; i < SCREEN_WIDTH; i++)
-    {
+    double step = (1. / static_cast<double>(cam.image_width));
+    
+    for (int i = 0; i < cam.image_height; i++){
+        for(int j = 0; j < cam.image_width; j++){
         // do not sample full image space range from 0 to 1, sample pixel centers instead
-        double progress = step * i + .5 * step;
-
-        vec2 sample_dir = cam.view_dir(progress);
-        ray camera_ray(sample_dir, cam.position);
-
-        frame_buffer.at(i) = recursive_ray_tracing(scene, camera_ray, depth.at(i));
+        auto pixel_center = cam.image_top_left + u[0] *j + u[1] *i ;
+        auto cam_pixel = cam.position - pixel_center ;
+        ray cam_pixel_ray(cam_pixel, cam.position);
+    
+        frame_buffer.at(i).at(j) = recursive_ray_tracing(scene, cam_pixel_ray, depth.at(i).at(j));
+        }
     }
 }
 
@@ -126,17 +140,25 @@ void rt_scene(const std::vector<std::unique_ptr<SceneGeometry>> &scene, const Ca
 */
 int main(int argc, char *args[])
 {
-    Camera cam(vec2(1, 0), point2(0, 0), 35, 35);
-
-
+    Camera cam;
+    cam.direction =vec3(0,0,-1);
+    cam.position = point3(0,0,0);
+    cam.aspect_ratio = ASPECT_RATIO;
+    cam.image_width = SCREEN_WIDTH;
+    cam.movement_speed = 0.1;
+    cam.vfov = 90;
+    auto u = cam.init();
+    
     // containers for the scene objects
     std::vector<std::unique_ptr<SceneGeometry>> scene = {};
 
     // scene definition
-    scene.push_back(std::make_unique<Circle>(point2(5, 0), 1, Material(RGB(1, 0, 0), .5)));
+    scene.push_back(std::make_unique<Sphere>(Material(RGB(1, 0, 0)), point3( 0.0, -100.5, -1.0), .5));
+    // scene.push_back(std::make_unique<Sphere>(Material(RGB(1, 1, 0)), point3( 0.0,    0.0, -1.0), .5));
+    scene.push_back(std::make_unique<Sphere>(Material(RGB(1, 0, 1)), point3(-1.0,    0.0, -1.0), .5));
 
-    scene.push_back(std::make_unique<Wall>(vec2(2, -1), point2(4, 3), 1, Material(RGB(0, 0, 1), 0.5)));
-    scene.push_back(std::make_unique<Wall>(vec2(1, .5), point2(4, -3), 2, Material(RGB(0, 1, 0), 0.5)));
+    // scene.push_back(std::make_unique<Wall>(Material(RGB(0, 0, 1)), vec3(2, -1, 0), point3(4, 3, -1), 1, 0.5));
+    // scene.push_back(std::make_unique<Wall>(Material(RGB(0, 1, 0)), vec3(1, .5, 0), point3(4, -3, -1), 2,  0.5));
 
     int frame_number = 0;
 
@@ -157,7 +179,7 @@ int main(int argc, char *args[])
     else
     {
         // Create window
-        window = SDL_CreateWindow("SDL Tutorial", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
+        window = SDL_CreateWindow("SDL Tutorial", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, cam.image_height, SDL_WINDOW_SHOWN);
         if (window == NULL)
         {
             printf("Window could not be created! SDL_Error: %s\n", SDL_GetError());
@@ -165,7 +187,7 @@ int main(int argc, char *args[])
         else
         {
             // create the surface. The surface is the buffer we write our color values to.
-            SDL_Surface *surface = SDL_CreateRGBSurface(0, SCREEN_WIDTH, SCREEN_HEIGHT, 32, 0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF);
+            SDL_Surface *surface = SDL_CreateRGBSurface(0, SCREEN_WIDTH, cam.image_height, 32, 0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF);
             if (!surface)
             {
                 std::cerr << "Surface creation failed: " << SDL_GetError() << std::endl;
@@ -185,12 +207,12 @@ int main(int argc, char *args[])
             }
 // Texture modification test
 #if defined(TEXTURE_TEST)
-            for (int y = 0; y < SCREEN_HEIGHT; ++y)
+            for (int y = 0; y < cam.image_height; ++y)
             {
                 for (int x = 0; x < SCREEN_WIDTH; ++x)
                 {
                     Uint32 *pixel = static_cast<Uint32 *>(surface->pixels) + y * surface->pitch / 4 + x;
-                    *pixel = SDL_MapRGBA(surface->format, 255, ((float)x) / SCREEN_WIDTH * 255, ((float)y) / SCREEN_HEIGHT * 255, 0);
+                    *pixel = SDL_MapRGBA(surface->format, 255, ((float)x) / SCREEN_WIDTH * 255, ((float)y) / cam.image_height * 255, 0);
                 }
             }
 #endif
@@ -214,10 +236,10 @@ int main(int argc, char *args[])
 
             We might switch to recursive ray tracing with nice reflections for sprint 3.
             */
-            std::vector<double> depth(SCREEN_WIDTH, -1);
+            std::vector<std::vector<double>> depth(cam.image_height, std::vector<double>(SCREEN_WIDTH, -1));
             // screen buffer
-            std::vector<std::vector<bool>> hits2d(SCREEN_HEIGHT, std::vector<bool>(SCREEN_WIDTH, false));
-            std::vector<RGB> frame_buffer(SCREEN_WIDTH, RGB(0, 0, 0));
+            std::vector<std::vector<bool>> hits2d(cam.image_height, std::vector<bool>(SCREEN_WIDTH, false));
+            std::vector<std::vector<RGB>> frame_buffer(SCREEN_WIDTH,std::vector<RGB>(cam.image_height, RGB(0, 0, 0)));
 
             SDL_Event e;
             bool quit = false;
@@ -275,7 +297,7 @@ int main(int argc, char *args[])
                             break;
 
                         case SDLK_r:
-                            cam = Camera(vec2(1, 0), point2(0, 0), 35, 35);
+                            // cam = Camera(vec3(1,0,0), point3(0,0,0), 35.0, ASPECT_RATIO, SCREEN_WIDTH,0.1);
                             break;
 
                         default:
@@ -283,7 +305,7 @@ int main(int argc, char *args[])
                         }
                     }
                 }
-                for (int i = 0; i < SCREEN_HEIGHT; i++)
+                for (int i = 0; i < cam.image_height; i++)
                 {
                     for (int j = 0; j < SCREEN_WIDTH; j++)
                     {
@@ -304,15 +326,15 @@ int main(int argc, char *args[])
                 float input = (x - SCREEN_WIDTH / 2) / static_cast<double>(SCREEN_WIDTH / 2);
                 cam.rotate(-input * .003);
 
-                for (int j = 0; j < SCREEN_WIDTH; j++)
-                {
-                    depth.at(j) = -1;
+                for (int i = 0; i < cam.image_height; i++){
+                    for (int j = 0; j < SCREEN_WIDTH; j++){
+                        depth.at(i).at(j) = -1;
+                    }
                 }
-
                 auto rt_start_time = std::chrono::high_resolution_clock::now();
                 // std::cout << "start raytracing\n";
                 //  Render and create the outpainted stencil
-                rt_scene(scene, cam, depth, frame_buffer);
+                rt_scene(u, scene, cam, depth, frame_buffer);
                 auto rt_end_time = std::chrono::high_resolution_clock::now();
                 // std::cout << "end raytracing\n";
                 cam.outpainting(depth, hits2d);
@@ -323,14 +345,16 @@ int main(int argc, char *args[])
 
 #if defined(RENDER_SCENE)
                 Uint8 *pixels = (Uint8 *)surface->pixels;
-                for (int i = 0; i < SCREEN_HEIGHT; i++)
+                for (int i = 0; i < cam.image_height; i++)
                 {
                     for (int j = 0; j < SCREEN_WIDTH; j++)
                     {
-
-                        RGB val = frame_buffer.at(j);
-                        if (!hits2d.at(i).at(j))
+                        RGB val = frame_buffer.at(i).at(j);
+                        if (!hits2d.at(i).at(j)){
                             val = OUT_COLOR;
+                            // std::cout << depth.at(i).at(j);
+                            // std::cout<< hits2d.at(i).at(j);
+                            }
                         Uint32 *pixel = static_cast<Uint32 *>(surface->pixels) + i * surface->pitch / 4 + j;
                         *pixel = SDL_MapRGBA(surface->format, 255, val.x * 255, val.y * 255, val.z * 255);
                     }
