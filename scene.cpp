@@ -4,10 +4,10 @@
 Collision Wall::intersect(ray r) const
 {
     // Calculate the denominator of the parametric equation
-    double denominator = normal.dot(r.get_direction());
+    double denominator = dot(normal , r.get_direction());
 
     // Calculate the parameter t for the intersection point
-    double t = (position - r.get_origin()).dot(normal) / denominator;
+    double t = dot(position - r.get_origin() , normal) / denominator;
 
     // Check if the intersection point is in front of the ray
     if (t > 0) {
@@ -15,15 +15,15 @@ Collision Wall::intersect(ray r) const
         vec3 intersection_point = r.at(t);
 
         // Calculate the basis vectors for the local coordinate system of the wall
-        vec3 wallRight = normal.cross(vec3(0, 0, 1)).normalize();
-        vec3 wallUp = wallRight.cross(normal).normalize();
+        vec3 wallRight = (cross(normal, vec3(0, 0, 1))).normalize();
+        vec3 wallUp = (cross(wallRight , normal)).normalize();
 
         // Calculate the vector from the wall position to the intersection point
         vec3 wallToIntersection = intersection_point - position;
 
         // Project the wallToIntersection vector onto the wall's local coordinate system
-        double projectionX = wallToIntersection.dot(wallRight);
-        double projectionY = wallToIntersection.dot(wallUp);
+        double projectionX = dot(wallToIntersection, wallRight);
+        double projectionY = dot(wallToIntersection, wallUp);
 
         // Check if the intersection point is within the bounds of the wall
         if (projectionX >= 0 && projectionX <= length && projectionY >= 0 && projectionY <= width) {
@@ -43,15 +43,16 @@ Collision Sphere::intersect(ray r) const
     
     auto ray_origin = r.get_origin();
     vec3 ray_sphere_vec = ray_origin - center ;
-    
-    double a = ray_direction.dot(ray_direction);
-    
-    double b = 2 * ray_direction.dot(ray_sphere_vec);
 
-    double c = ray_sphere_vec.dot(ray_sphere_vec) - radius * radius;
+    double a = dot(ray_direction , ray_direction);
+
+    double b = 2 * dot(ray_direction , ray_sphere_vec);
+
+    double c = dot(ray_sphere_vec , ray_sphere_vec) - radius * radius;
 
     double det = b * b - 4 * a * c;
-    
+    // std::cout<<det<<std::endl;
+
     double projection = -1; 
     // ray doesn't collide with the sphere
     if(det < 0) {
@@ -65,10 +66,12 @@ Collision Sphere::intersect(ray r) const
     }
     // ray touches the sphere with 2 intersection points
     else{
+        // std:: cout << b << std::endl;
         double p1 = (-b + sqrt(det)) / (2 * a);
         double p2 = (-b - sqrt(det)) / (2 * a);
-        
         projection = p1 < p2 ? p1 : p2;
+        // std::cout << a << std::endl;
+
         intersection_point = ray_origin + ray_direction * projection;
     }
     return Collision(projection * ray_direction.length(), intersection_point - center, true);
@@ -80,19 +83,18 @@ double degrees_to_radians(double degrees) {
 
 std::vector<vec3> Camera::init(){
     vec3   u, v, w;        // Camera frame basis vectors
-    position = lookfrom;
     image_height = static_cast<int>(image_width / aspect_ratio);
-    focal_length = (lookfrom - lookat).length();
+    focal_length = (position - lookat).length();
     auto theta = degrees_to_radians(vfov);
     auto h = tan(theta/2);
     auto fov_height = 2 * h * focal_length;
     double fov_width = fov_height * (static_cast<double>(image_width)/image_height);
 
     // Calculate the u,v,w unit basis vectors for the camera coordinate frame.
-    w = (lookfrom - lookat).normalize();
-    u = (vup.cross(w)).normalize();
-    v = w.cross(u);
-
+    w = (position - lookat).normalize();
+    u = (cross(vup, w)).normalize();
+    v = cross(w,u);
+    direction = w;
     // the FOV of the camera will be in the z direction so (x , -y , 0)
     vec3 fov_x = u * fov_width;
     // fov_x.print();
@@ -117,23 +119,23 @@ void Camera::outpainting(std::vector<std::vector<double>> depth, std::vector<std
     // Assuming camera's direction is along the negative z-axis
     vec3 camera_direction(0, 0, -1);
 
-    for (int i = 0; i < image_width; i++)
+    for (int i = 0; i < image_height; i++)
     {
-        for (int j = 0; j < image_height; j++)
+        for (int j = 0; j < image_width; j++)
         {
-            double image_space_x = i / static_cast<double>(image_width) + 0.5 / image_width;
-            double image_space_y = j / static_cast<double>(image_height) + 0.5 / image_height;
+            double image_space_x = j / static_cast<double>(image_width) + 0.5 / image_width;
+            double image_space_y = i / static_cast<double>(image_height) + 0.5 / image_height;
 
             // Convert normalized image space coordinates to world coordinates
             double world_x = image_space_x * image_width;
             double world_y = image_space_y * image_height;
 
             // Find the corresponding depth value in the scene
-            double world_z = depth[j][i];
+            double world_z = depth[i][j];
             // std::cout<< world_z ;
 
             // Check if the point is in front of the camera
-            if (camera_direction.dot(vec3(world_x, world_y, world_z)) > 0)
+            if (dot(camera_direction, vec3(world_x, world_y, world_z)) > 0)
             {
                 // // Calculate the apparent height of the object
                 // double apparent_height = object_height / world_z * focal_length;

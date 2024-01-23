@@ -18,7 +18,7 @@
 const int SCREEN_WIDTH = 640;
 // const int cam.image_height = 480;
 const bool performance_logging = true;
-constexpr float ASPECT_RATIO = 4 / 3;
+constexpr float ASPECT_RATIO = 4/ 3;
 int i = 0;
 
 /*
@@ -28,7 +28,7 @@ double diffuse_shading(vec3 pos, vec3 normal, vec3 light_pos)
 {
     vec3 light_dir = (light_pos - pos).normalize();
     // This is a standard, physically based(tm) diffuse lighting calculation
-    double lambertian = light_dir.dot(normal.normalize());
+    double lambertian = dot(light_dir , normal.normalize());
     return lambertian > 0 ? lambertian : 0;
 }
 
@@ -42,7 +42,7 @@ double specular(vec3 pos, vec3 normal, vec3 light_pos, vec3 view_dir){
     vec3 light_dir = (light_pos - pos).normalize();
 
     vec3 halfway = (view_dir + light_dir).normalize();
-    double result = halfway.dot(normal);
+    double result = dot(halfway , normal);
     return result > 0 ? result : 0;
 }
 
@@ -57,18 +57,10 @@ Collision find_closest_hit(const std::vector<std::unique_ptr<SceneGeometry>> &sc
     // check all scene objects for a collision closer to the camera than the current closest collision
     for (int j = 0; j < scene.size(); j++)
     {   
-        // std::cout << "ray before ";
-        // r.get_direction().print();
-        // std::cout << std::endl;
         Collision object_col = scene.at(j)->intersect(r);
-
-        // std::cout << "ray after ";
-        // r.get_direction().print();
-        // std::cout << std::endl;
         if (object_col.hit == true && object_col.distance < col.distance)
         {
             col = object_col;
-            // std::cout << object_col.distance;
             col.hit_object_index = j;
         }
     }
@@ -90,7 +82,6 @@ RGB recursive_ray_tracing(const std::vector<std::unique_ptr<SceneGeometry>> &sce
     }
     else
     {
-        std::cout << col.distance << std::endl;
         vec3 pos = r.get_origin() + r.get_direction() * col.distance;
         Material mat = scene.at(col.hit_object_index)->get_material();
         depth = col.distance;
@@ -141,24 +132,36 @@ void rt_scene(std::vector<vec3> u,const std::vector<std::unique_ptr<SceneGeometr
 int main(int argc, char *args[])
 {
     Camera cam;
-    cam.direction =vec3(0,0,-1);
-    cam.position = point3(0,0,0);
     cam.aspect_ratio = ASPECT_RATIO;
     cam.image_width = SCREEN_WIDTH;
     cam.movement_speed = 0.1;
     cam.vfov = 90;
+    cam.position = point3(-2,2,1);
+    cam.lookat   = point3(0,0,-1);
+    cam.vup      = vec3(0,1,0);
     auto u = cam.init();
-    
     // containers for the scene objects
     std::vector<std::unique_ptr<SceneGeometry>> scene = {};
 
     // scene definition
-    scene.push_back(std::make_unique<Sphere>(Material(RGB(1, 0, 0)), point3( 0.0, -100.5, -1.0), .5));
-    // scene.push_back(std::make_unique<Sphere>(Material(RGB(1, 1, 0)), point3( 0.0,    0.0, -1.0), .5));
-    scene.push_back(std::make_unique<Sphere>(Material(RGB(1, 0, 1)), point3(-1.0,    0.0, -1.0), .5));
+    scene.push_back(std::make_unique<Sphere>(Material(RGB(1, 0, 0),0.5), point3( 0.0, -1.5, -1.0), .5));
+    scene.push_back(std::make_unique<Sphere>(Material(RGB(0, 1, 0),0.5), point3( 1.5, 0, -1.0), .5));
 
-    // scene.push_back(std::make_unique<Wall>(Material(RGB(0, 0, 1)), vec3(2, -1, 0), point3(4, 3, -1), 1, 0.5));
-    // scene.push_back(std::make_unique<Wall>(Material(RGB(0, 1, 0)), vec3(1, .5, 0), point3(4, -3, -1), 2,  0.5));
+    scene.push_back(std::make_unique<Wall>(Material(RGB(0, 0, 1)), vec3(2, -1, -1), point3( 0.0,    0.0, -1.0), 1, 0.5));
+    scene.push_back(std::make_unique<Wall>(Material(RGB(0, 1, 0)), vec3(1, .5, -1), point3(-1.0,    0.0, -1.0), 2,  0.5));
+    // double step = (1. / static_cast<double>(cam.image_width));
+    
+    // for (int i = 0; i < cam.image_height; i++){
+    //     for(int j = 0; j < cam.image_width; j++){
+    //     // do not sample full image space range from 0 to 1, sample pixel centers instead
+    //     auto pixel_center = cam.image_top_left + u[0] *j + u[1] *i ;
+    //     auto cam_pixel = cam.position - pixel_center ;
+    //     ray cam_pixel_ray(cam_pixel, cam.position);
+    //     // cam_pixel_ray.get_direction().print();
+    //     Collision col = scene.at(0)->intersect(cam_pixel_ray);
+    //     // std::cout << col.distance << std::endl;
+    //     }
+    // }
 
     int frame_number = 0;
 
@@ -352,8 +355,6 @@ int main(int argc, char *args[])
                         RGB val = frame_buffer.at(i).at(j);
                         if (!hits2d.at(i).at(j)){
                             val = OUT_COLOR;
-                            // std::cout << depth.at(i).at(j);
-                            // std::cout<< hits2d.at(i).at(j);
                             }
                         Uint32 *pixel = static_cast<Uint32 *>(surface->pixels) + i * surface->pitch / 4 + j;
                         *pixel = SDL_MapRGBA(surface->format, 255, val.x * 255, val.y * 255, val.z * 255);

@@ -90,10 +90,9 @@ private:
     vec3 right_vec();
 public:
     vec3 direction, fov_top_left, image_top_left, pixel_delta_x , pixel_delta_y;
-    point3 position;
     double movement_speed, aspect_ratio , image_width, image_height, focal_length , vfov;
 
-    point3 lookfrom = point3(0,0,-1);  // Point camera is looking from
+    point3 position = point3(0,0,-1);  // Point camera is looking from
     point3 lookat   = point3(0,0,0);   // Point camera is looking at
     vec3   vup      = vec3(0,1,0);     // Camera-relative "up" direction
 

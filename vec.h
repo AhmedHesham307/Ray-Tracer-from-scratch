@@ -18,12 +18,9 @@ class vec3
     vec3(double x_val, double y_val, double z_val) : x{x_val}, y{y_val}, z{z_val}{}
 
     double length() const;
+    double length_squared() const;
     
     vec3 normalize() const;
-    
-    double dot(const vec3 other) const;
-    vec3 cross(const vec3 other) const;
-
     
     vec3 operator+(const vec3 other) const;
     vec3 operator-() const;   
@@ -36,6 +33,8 @@ class vec3
     vec3 linear_interp(const vec3 first, const vec3 second, double d);
     vec3 reflect(const vec3 normal) const;
 };
+double dot(const vec3 v1,const vec3 v2);
+vec3 cross(const vec3 &u, const vec3 &v);
 using point3 = vec3;
 using RGB = vec3;
 #endif
