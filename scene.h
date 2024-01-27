@@ -99,9 +99,6 @@ public:
     Camera (){}
     std::vector<vec3> init ();
     // Camera(vec3 dir, point3 pos, double focal_length, double aspect_ratio, double image_width, double speed = .1) : direction{dir}, position{pos}, focal_length{focal_length}, aspect_ratio{aspect_ratio}, image_width{image_width}, movement_speed{speed} {}
-
-    void outpainting(std::vector<std::vector<double>> depth,  std::vector<std::vector<bool>> &out_hits);
-    
     
     void forward();
     void backward();
@@ -109,4 +106,5 @@ public:
     void right();
 
     void rotate(double angle);
+    void rotate(double angle, const vec3& axis) ;
 };

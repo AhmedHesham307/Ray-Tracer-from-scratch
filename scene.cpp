@@ -8,7 +8,7 @@ Collision Wall::intersect(ray r) const
 
     // Calculate the parameter t for the intersection point
     double t = dot(position - r.get_origin() , normal) / denominator;
-
+    std::cout << t << std::endl;
     // Check if the intersection point is in front of the ray
     if (t > 0) {
         // Calculate the intersection point
@@ -77,15 +77,11 @@ Collision Sphere::intersect(ray r) const
     return Collision(projection * ray_direction.length(), intersection_point - center, true);
 }
 
-double degrees_to_radians(double degrees) {
-    return degrees * 3.14 / 180.0;
-}
-
 std::vector<vec3> Camera::init(){
     vec3   u, v, w;        // Camera frame basis vectors
     image_height = static_cast<int>(image_width / aspect_ratio);
     focal_length = (position - lookat).length();
-    auto theta = degrees_to_radians(vfov);
+    auto theta = vfov * 3.14 / 180.0;
     auto h = tan(theta/2);
     auto fov_height = 2 * h * focal_length;
     double fov_width = fov_height * (static_cast<double>(image_width)/image_height);
@@ -109,54 +105,12 @@ std::vector<vec3> Camera::init(){
     return std::vector<vec3> {pixel_delta_x ,pixel_delta_y };
     }
 
-void Camera::outpainting(std::vector<std::vector<double>> depth, std::vector<std::vector<bool>> &out_hits)
-{
-    uint image_width = depth[0].size();
-    uint image_height = depth.size();
-
-    double object_height = 1.0; // Assuming a default object height
-
-    // Assuming camera's direction is along the negative z-axis
-    vec3 camera_direction(0, 0, -1);
-
-    for (int i = 0; i < image_height; i++)
-    {
-        for (int j = 0; j < image_width; j++)
-        {
-            double image_space_x = j / static_cast<double>(image_width) + 0.5 / image_width;
-            double image_space_y = i / static_cast<double>(image_height) + 0.5 / image_height;
-
-            // Convert normalized image space coordinates to world coordinates
-            double world_x = image_space_x * image_width;
-            double world_y = image_space_y * image_height;
-
-            // Find the corresponding depth value in the scene
-            double world_z = depth[i][j];
-            // std::cout<< world_z ;
-
-            // Check if the point is in front of the camera
-            if (dot(camera_direction, vec3(world_x, world_y, world_z)) > 0)
-            {
-                // // Calculate the apparent height of the object
-                // double apparent_height = object_height / world_z * focal_length;
-
-                // Check if the current point in the scene is within the apparent height
-                // if (world_z < apparent_height)
-                // {
-                    // Set the corresponding element in out_hits to true
-                    out_hits[j][i] = true;
-                // }
-            }
-        }
-    }
-}
-
 vec3 Camera::forward_vec(){
     return direction;
 }
 
 vec3 Camera::right_vec(){
-    return vec3(direction.y, -direction.x, 0);
+    return (cross(vup,  ((position - lookat).normalize()))).normalize();
 }
 
 void Camera::forward(){
@@ -180,5 +134,30 @@ void Camera::rotate(double angle){
     double new_angle = current_angle + angle;
     direction = vec3(std::cos(new_angle), std::sin(new_angle),0);
 }
+void Camera::rotate(double angle, const vec3& axis) {
+        // Rodrigues' rotation formula
+        double cosTheta = std::cos(angle);
+        double sinTheta = std::sin(angle);
 
+        double ux = axis.x;
+        double uy = axis.y;
+        double uz = axis.z;
+
+        double dot = ux * direction.x + uy * direction.y + uz * direction.z;
+
+        double crossX = uy * direction.z - uz * direction.y;
+        double crossY = uz * direction.x - ux * direction.z;
+        double crossZ = ux * direction.y - uy * direction.x;
+
+        direction.x = cosTheta * direction.x + sinTheta * crossX + (1 - cosTheta) * dot * ux;
+        direction.y = cosTheta * direction.y + sinTheta * crossY + (1 - cosTheta) * dot * uy;
+        direction.z = cosTheta * direction.z + sinTheta * crossZ + (1 - cosTheta) * dot * uz;
+
+        // Update up vector using cross product
+        vup = {uz * direction.y - uy * direction.z, ux * direction.z - uz * direction.x, uy * direction.x - ux * direction.y};
+
+        // Normalize vectors
+        direction = direction.normalize();
+        vup = vup.normalize();
+    }
 
