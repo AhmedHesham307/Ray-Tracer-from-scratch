@@ -100,3 +100,11 @@ vec3 vec3::reflect(const vec3 normal) const{
     double normal_component = 2 * normalized_vec.dot(normalized_normal);
     return normalized_vec - normalized_normal * normal_component;
 }
+
+vec3 vec3::clamp() const{
+    return vec3(std::min(std::max(x, 0.), 1.), std::min(std::max(y, 0.), 1.), std::min(std::max(z, 0.), 1.));
+}
+
+void vec3::print() const{
+    std::cout << x << ", " << y << ", " << z << "\n";
+}

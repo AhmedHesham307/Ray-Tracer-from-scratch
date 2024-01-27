@@ -47,6 +47,18 @@ public:
     virtual ~SceneGeometry() {}
     Material get_material() { return mat; }
 };
+
+class Sphere : public SceneGeometry
+{
+    point3 center;
+    double radius;
+
+public:
+    Sphere(point3 center = point3(0,0,0), double radius = 1.0, Material mat = DEFAULT_MAT) 
+    : SceneGeometry{mat}, center{center}, radius{radius}{}
+    Collision intersect(ray r) const override;
+};
+
 /*
 class Wall : public SceneGeometry
 {
@@ -98,7 +110,11 @@ struct Camera
     */
     vec3 local_to_world(const vec3 local) const;
 
-    Camera(vec3 dir, point3 pos, vec3 up, double focal_length, double sensor_size) : direction{dir}, position{pos}, up{up}, focal_length{focal_length}, sensor_size{sensor_size}, ortho_f_cache{forward_vec()}, ortho_r_cache{right_vec()}, ortho_u_cache{up_vec()} {}
+    Camera(vec3 dir, point3 pos, vec3 up, double focal_length, double sensor_size) : direction{dir}, position{pos}, up{up}, focal_length{focal_length}, sensor_size{sensor_size}, ortho_f_cache{forward_vec()}, ortho_r_cache{right_vec()}, ortho_u_cache{up_vec()} {
+        ortho_r_cache.print();
+        ortho_f_cache.print();
+        ortho_u_cache.print();
+    }
 
     /*
     * map a position in the image space to a ray originating from the camera

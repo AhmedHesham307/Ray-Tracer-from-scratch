@@ -1,6 +1,7 @@
 #ifndef VEC2
 #define VEC2
 #include <cmath>
+#include <iostream>
 
 /*
 using struct here because of ISO Cpp C.2 guideline:
@@ -57,6 +58,8 @@ struct vec3
 
     static vec3 lerp(const vec3 first, const vec3 second, double d);
     vec3 reflect(const vec3 normal) const;
+    void print() const;
+    vec3 clamp() const;
 };
 
 using RGB = vec3;

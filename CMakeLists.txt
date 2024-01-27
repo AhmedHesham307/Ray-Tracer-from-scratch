@@ -20,5 +20,9 @@ set(HEADERS
 )
 
 add_executable(RaytracerADP ${SOURCES} ${HEADERS})
-target_compile_options(RaytracerADP PUBLIC -O3 -g)
+target_compile_options(RaytracerADP PUBLIC -O3)
+
+add_executable(Debug ${SOURCES} ${HEADERS})
+target_compile_options(Debug PUBLIC -g)
 target_link_libraries(RaytracerADP ${SDL2_LIBRARIES})
+target_link_libraries(Debug ${SDL2_LIBRARIES})
