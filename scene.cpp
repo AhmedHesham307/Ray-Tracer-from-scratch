@@ -1,5 +1,5 @@
 #include "scene.h"
-
+/*
 Collision Wall::intersect(ray r) const
 {
     
@@ -41,8 +41,8 @@ Collision Circle::intersect(ray r) const
     double p = -1;
 
     if (det < 0)
-        return Collision(-1, vec2(0, 0), false);
-    vec2 intersection_point(0, 0);
+        return Collision(-1, vec3(0, 0, 0), false);
+    vec3 intersection_point(0, 0, 0);
     if (det == 0)
         intersection_point = r.origin + r.direction * (-b / (2 * a));
     else
@@ -56,58 +56,38 @@ Collision Circle::intersect(ray r) const
 
     return Collision(p * r.direction.length(), intersection_point + center * (-1), p > 0);
 }
+*/
 
-vec2 Camera::view_dir(double image_space_x) const
+vec3 Camera::view_dir(double image_space_x, double image_space_y) const
 {
     double dir_angle = std::atan2(direction.y, direction.x);
-    double y = -image_space_x * sensor_size + .5 * sensor_size;
-    vec2 local = vec2(focal_length, y).normalize();
+    double x = image_space_x * sensor_size - .5 * sensor_size;
+    double y = -image_space_y * sensor_size + .5 * sensor_size;
+    vec3 local = vec3(x, y, focal_length).normalize();
 
-    vec2 world_space_view_dir(std::cos(dir_angle) * local.x - std::sin(dir_angle) * local.y,
-                              std::sin(dir_angle) * local.x + std::cos(dir_angle) * local.y);
-
+    vec3 world_space_view_dir = local_to_world(local);
     return world_space_view_dir;
 }
 
-void Camera::outpainting(std::vector<double> depth, std::vector<std::vector<bool>> &out_hits)
-{
-    uint width = out_hits.at(0).size();
-    uint height = out_hits.size();
-
-    double object_height = 1;
-    double image_plane_width = sensor_size / focal_length;
-    double image_plane_height = image_plane_width / (4. / 3);
-    // std::cout << image_plane_height << std::endl;
-
-    for (int i = 0; i < width; i++)
-    {
-        if (depth.at(i) >= 0)
-        {
-            double image_space_x = i / static_cast<double>(width) + .5 / width;
-            double image_plane_vector_y = -image_space_x * sensor_size + .5 * sensor_size;
-            double image_plane_distance = vec2(focal_length, image_plane_vector_y).length() / focal_length;
-
-            double apparent_height = object_height / depth.at(i) * image_plane_distance;
-
-            for (int j = 0; j < height; j++)
-            {
-                // pixel position in 0 to 1 image space
-                double image_space_y = j / static_cast<double>(height) + .5 / height;
-                double off_center = std::abs(.5 - image_space_y) * image_plane_height;
-                if (off_center < apparent_height)
-                    out_hits.at(j).at(i) = true;
-            }
-        }
-    }
+vec3 Camera::forward_vec() const{
+    return direction.normalize();
 }
 
-vec2 Camera::forward_vec(){
-    return direction;
+vec3 Camera::right_vec() const{
+    return direction.cross(up).normalize();
 }
 
-vec2 Camera::right_vec(){
-    return vec2(direction.y, -direction.x);
+vec3 Camera::up_vec() const{
+    return right_vec().cross(direction).normalize();
 }
+
+vec3 Camera::local_to_world(const vec3 v) const{
+    // just a basis transformation
+    return vec3(ortho_r_cache.x * v.x + ortho_u_cache.x * v.y + ortho_f_cache.x * v.z,
+                ortho_r_cache.y * v.x + ortho_u_cache.y * v.y + ortho_f_cache.y * v.z,
+                ortho_r_cache.z * v.x + ortho_u_cache.z * v.y + ortho_f_cache.z * v.z);
+}
+
 
 void Camera::forward(){
     position = position + forward_vec() * movement_speed;
@@ -128,5 +108,5 @@ void Camera::left(){
 void Camera::rotate(double angle){
     double current_angle = std::atan2(direction.y, direction.x);
     double new_angle = current_angle + angle;
-    direction = vec2(std::cos(new_angle), std::sin(new_angle));
+    direction = vec3(std::cos(new_angle), std::sin(new_angle), 0);
 }

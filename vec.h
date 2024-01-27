@@ -48,13 +48,17 @@ struct vec3
     
     double dot(const vec3 other) const;
 
+    vec3 cross(const vec3 other) const;
+
     vec3 operator+(const vec3 other) const;
     vec3 operator-(const vec3 other) const;
     vec3 operator*(const vec3 other) const;
     vec3 operator*(const double d) const;
 
     static vec3 lerp(const vec3 first, const vec3 second, double d);
+    vec3 reflect(const vec3 normal) const;
 };
 
 using RGB = vec3;
+using point3 = vec3;
 #endif

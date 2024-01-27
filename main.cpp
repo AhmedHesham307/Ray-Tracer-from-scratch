@@ -13,31 +13,30 @@
 #define RENDER_SCENE
 // #define TEXTURE_TEST
 
-#define LIGHT_POS point2(2, 0)
-#define OUT_COLOR RGB(.2,.2,.3)
+#define LIGHT_POS point3(2, 0, 0)
+#define OUT_COLOR RGB(.2, .2, .3)
 
 const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
 const bool performance_logging = true;
 constexpr float aspect = 4 / 3;
 
-
-
-double diffuse_shading(vec2 pos, vec2 normal, vec2 light_pos)
+double diffuse_shading(vec3 pos, vec3 normal, vec3 light_pos)
 {
-    vec2 light_dir = (light_pos - pos).normalize();
+    vec3 light_dir = (light_pos - pos).normalize();
     // This is a standard, physically based(tm) diffuse lighting calculation
     double lambertian = light_dir.dot(normal.normalize());
     return lambertian > 0 ? lambertian : 0;
 }
 
-double specular(vec2 pos, vec2 normal, vec2 light_pos, vec2 view_dir){
-    //Blinn-Phong specular
+double specular(vec3 pos, vec3 normal, vec3 light_pos, vec3 view_dir)
+{
+    // Blinn-Phong specular
     view_dir = view_dir.normalize();
     normal = normal.normalize();
-    vec2 light_dir = (light_pos - pos).normalize();
+    vec3 light_dir = (light_pos - pos).normalize();
 
-    vec2 halfway = (view_dir + light_dir).normalize();
+    vec3 halfway = (view_dir + light_dir).normalize();
     double result = halfway.dot(normal);
     return result > 0 ? result : 0;
 }
@@ -45,7 +44,7 @@ double specular(vec2 pos, vec2 normal, vec2 light_pos, vec2 view_dir){
 Collision find_closest_hit(const std::vector<std::unique_ptr<SceneGeometry>> &scene, ray r)
 {
     // create placeholder collision with highest possible distance and no intersection
-    Collision col = Collision(DBL_MAX, vec2(0, 0), false);
+    Collision col = Collision(DBL_MAX, vec3(0, 0, 0), false);
 
     // check all scene objects for a collision closer to the camera than the current closest collision
     for (int j = 0; j < scene.size(); j++)
@@ -70,7 +69,7 @@ RGB recursive_ray_tracing(const std::vector<std::unique_ptr<SceneGeometry>> &sce
     }
     else
     {
-        vec2 pos = r.origin + r.direction * col.distance;
+        vec3 pos = r.origin + r.direction * col.distance;
         Material mat = scene.at(col.hit_object_index)->get_material();
         depth = col.distance;
         double diffuse_intensity = diffuse_shading(r.origin + r.direction * col.distance, col.normal, LIGHT_POS);
@@ -80,10 +79,10 @@ RGB recursive_ray_tracing(const std::vector<std::unique_ptr<SceneGeometry>> &sce
         {
             return local_color;
         }
-        
-        //start new ray minimally offset from the surface so that the new ray can not hit the surface again
-        point2 start_pos = pos + col.normal * .0001;
-        vec2 reflected_dir = r.direction.reflect(col.normal);
+
+        // start new ray minimally offset from the surface so that the new ray can not hit the surface again
+        point3 start_pos = pos + col.normal * .0001;
+        vec3 reflected_dir = r.direction.reflect(col.normal);
         ray next_ray = ray(reflected_dir, start_pos);
         double depth_i_value = 0;
 
@@ -95,31 +94,35 @@ RGB recursive_ray_tracing(const std::vector<std::unique_ptr<SceneGeometry>> &sce
 
 void rt_scene(const std::vector<std::unique_ptr<SceneGeometry>> &scene, const Camera &cam, std::vector<double> &depth, std::vector<RGB> &frame_buffer)
 {
-    double step = (1. / static_cast<double>(SCREEN_WIDTH));
+    double step_x = (1. / static_cast<double>(SCREEN_WIDTH));
+    double step_y = (1. / static_cast<double>(SCREEN_HEIGHT));
     for (int i = 0; i < SCREEN_WIDTH; i++)
     {
-        // do not sample full image space range from 0 to 1, sample pixel centers instead
-        double progress = step * i + .5 * step;
+        for (int j = 0; j < SCREEN_HEIGHT; j++)
+        {
+            // do not sample full image space range from 0 to 1, sample pixel centers instead
+            double screen_space_x = step_x * i + .5 * step_x;
+            double screen_space_y = step_y * j + .5 * step_y;
+            vec3 sample_dir = cam.view_dir(screen_space_x, screen_space_y);
+            ray camera_ray(sample_dir, cam.position);
 
-        vec2 sample_dir = cam.view_dir(progress);
-        ray camera_ray(sample_dir, cam.position);
-
-        frame_buffer.at(i) = recursive_ray_tracing(scene, camera_ray, depth.at(i));
+            frame_buffer.at(i) = recursive_ray_tracing(scene, camera_ray, depth.at(i));
+        }
     }
 }
 
 int main(int argc, char *args[])
 {
-    Camera cam(vec2(1, 0), point2(0, 0), 35, 35);
+    Camera cam(vec3(1, 0, 0), point3(0, 0, 0), vec3(0, 1, 0), 35, 35);
 
     // containers for the scene objects
     std::vector<std::unique_ptr<SceneGeometry>> scene = {};
 
     // scene definition
-    scene.push_back(std::make_unique<Circle>(point2(5, 0), 1, Material(RGB(1, 0, 0), .5)));
+    //scene.push_back(std::make_unique<Circle>(point2(5, 0), 1, Material(RGB(1, 0, 0), .5)));
 
-    scene.push_back(std::make_unique<Wall>(vec2(2, -1), point2(4, 3), 1, Material(RGB(0, 0, 1), 0.5)));
-    scene.push_back(std::make_unique<Wall>(vec2(1, .5), point2(4, -3), 2, Material(RGB(0, 1, 0), 0.5)));
+    //scene.push_back(std::make_unique<Wall>(vec2(2, -1), point2(4, 3), 1, Material(RGB(0, 0, 1), 0.5)));
+    //scene.push_back(std::make_unique<Wall>(vec2(1, .5), point2(4, -3), 2, Material(RGB(0, 1, 0), 0.5)));
 
     int frame_number = 0;
 
@@ -293,8 +296,7 @@ int main(int argc, char *args[])
                 //  Render and create the outpainted stencil
                 rt_scene(scene, cam, depth, frame_buffer);
                 auto rt_end_time = std::chrono::high_resolution_clock::now();
-                // std::cout << "end raytracing\n";
-                cam.outpainting(depth, hits2d);
+
                 auto outpainting_end_time = std::chrono::high_resolution_clock::now();
 
                 // std::cout << "shading and outpainting done\n";
