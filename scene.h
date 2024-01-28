@@ -28,8 +28,8 @@ struct Collision{
     double distance;
     vec3 normal;
     bool hit;
-    Collision(double distance, vec3 normal, bool hit) : distance{distance}, normal{normal}, hit{hit}{}
-int hit_object_index;
+    int hit_object_index;
+    Collision(double distance, vec3 normal, bool hit , int hit_object_index) : distance{distance}, normal{normal}, hit{hit}, hit_object_index{hit_object_index}{}
 };
 
 struct Material
@@ -106,5 +106,4 @@ public:
     void right();
 
     void rotate(double angle);
-    void rotate(double angle, const vec3& axis) ;
 };

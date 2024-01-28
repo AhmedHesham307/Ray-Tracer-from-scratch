@@ -30,11 +30,12 @@ class vec3
     vec3 operator/(const double t) const;
     void print()const;
 
-    vec3 linear_interp(const vec3 first, const vec3 second, double d);
-    vec3 reflect(const vec3 normal) const;
+    static vec3 linear_interp(const vec3 first, const vec3 second, double d);
+    static vec3 reflect(const vec3 v , const vec3 normal) ;
+    static double dot(const vec3 v1,const vec3 v2);
+    static vec3 cross(const vec3 &u, const vec3 &v);
 };
-double dot(const vec3 v1,const vec3 v2);
-vec3 cross(const vec3 &u, const vec3 &v);
+
 using point3 = vec3;
 using RGB = vec3;
 #endif

@@ -11,15 +11,30 @@
 
 #define RENDER_SCENE
 // #define TEXTURE_TEST
-
 #define LIGHT_POS point3(2, 0, 0)
-#define OUT_COLOR RGB(.2,.2,.3)
+#define GROUND_COLOR RGB(0.025, 0.05, 0.075)
+#define SKYCOLOR_LOW RGB(0.36, 0.45, 0.57)
+#define SKYCOLOR_HIGH RGB(0.14, 0.21, 0.49)
+#define SUN_COLOR RGB(1.64, 1.27, 0.99)
+#define SUN_DIRECTION vec3(.7, .4, .7)
+
 
 const int SCREEN_WIDTH = 640;
 // const int cam.image_height = 480;
 const bool performance_logging = true;
 constexpr float ASPECT_RATIO = 4/ 3;
 int i = 0;
+
+RGB out_color(vec3 v)
+{
+    if (v.z < 0.0){
+        return GROUND_COLOR;
+    }
+    v = v.normalize();
+    const float skyGradient = 1. / 4.;
+    vec3 skyColor = vec3::linear_interp(SKYCOLOR_LOW, SKYCOLOR_HIGH, std::pow(v.z, skyGradient));
+    return skyColor;
+}
 
 /*
 * diffuse light intensity
@@ -28,7 +43,7 @@ double diffuse_shading(vec3 pos, vec3 normal, vec3 light_pos)
 {
     vec3 light_dir = (light_pos - pos).normalize();
     // This is a standard, physically based(tm) diffuse lighting calculation
-    double lambertian = dot(light_dir , normal.normalize());
+    double lambertian = vec3::dot(light_dir , normal.normalize());
     return lambertian > 0 ? lambertian : 0;
 }
 
@@ -42,7 +57,7 @@ double specular(vec3 pos, vec3 normal, vec3 light_pos, vec3 view_dir){
     vec3 light_dir = (light_pos - pos).normalize();
 
     vec3 halfway = (view_dir + light_dir).normalize();
-    double result = dot(halfway , normal);
+    double result = vec3::dot(halfway , normal);
     return result > 0 ? result : 0;
 }
 
@@ -52,13 +67,14 @@ double specular(vec3 pos, vec3 normal, vec3 light_pos, vec3 view_dir){
 Collision find_closest_hit(const std::vector<std::unique_ptr<SceneGeometry>> &scene, ray r)
 {
     // create placeholder collision with highest possible distance and no intersection
-    Collision col = Collision(DBL_MAX, vec3(0, 0, 0), false);
+    Collision col = Collision(DBL_MAX, vec3(0, 0, 0), false , 0);
 
     // check all scene objects for a collision closer to the camera than the current closest collision
     for (int j = 0; j < scene.size(); j++)
     {   
         Collision object_col = scene.at(j)->intersect(r);
-        if (object_col.hit == true && object_col.distance < col.distance)
+        
+        if (object_col.distance > 0 && object_col.distance < col.distance)
         {
             col = object_col;
             col.hit_object_index = j;
@@ -74,10 +90,9 @@ RGB recursive_ray_tracing(const std::vector<std::unique_ptr<SceneGeometry>> &sce
 {
     Collision col = find_closest_hit(scene, r);
     
-    if (col.hit_object_index < 0)
+    if (col.hit_object_index <= 0)
     {
-        std::cout << "no hit";
-        return OUT_COLOR;
+        return out_color(r.get_direction());
     }
     else
     {
@@ -94,7 +109,7 @@ RGB recursive_ray_tracing(const std::vector<std::unique_ptr<SceneGeometry>> &sce
         
         //start new ray minimally offset from the surface so that the new ray can not hit the surface again
         point3 start_pos = pos + col.normal * .0001;
-        vec3 reflected_dir = r.get_direction().reflect(col.normal);
+        vec3 reflected_dir = vec3::reflect(r.get_direction() ,col.normal);
         ray next_ray = ray(reflected_dir, start_pos);
     
         RGB rt_color = recursive_ray_tracing(scene, next_ray, remaining_iterations - 1);
@@ -133,16 +148,16 @@ int main(int argc, char *args[])
     cam.image_width = SCREEN_WIDTH;
     cam.movement_speed = 0.1;
     cam.vfov = 90;
-    cam.position = point3(-2,2,1);
-    cam.lookat   = point3(0,0,-1);
-    cam.vup      = vec3(0,1,0);
+    cam.position = point3(0,0,0);
+    cam.lookat   = point3(-1,0,0);
+    cam.vup      = vec3(0,0,1);
     auto u = cam.init();
     // containers for the scene objects
     std::vector<std::unique_ptr<SceneGeometry>> scene = {};
 
     // scene definition
-    scene.push_back(std::make_unique<Sphere>(Material(RGB(1, 0, 0),0.5), point3( 0.0, -1.5, -1.0), .5));
-    scene.push_back(std::make_unique<Sphere>(Material(RGB(0, 1, 0),0.5), point3( 1.5, 0, -1.0), .5));
+    scene.push_back(std::make_unique<Sphere>(Material(RGB(1, 0, 0),0.5), point3( 3, 0, 0), .5));
+    scene.push_back(std::make_unique<Sphere>(Material(RGB(0, 1, 0),0.5), point3( 1.5, 0, 0), .5));
 
     // scene.push_back(std::make_unique<Wall>(Material(RGB(0, 0, 1)), vec3(2, -1, -1), point3( 0.0,    0.0, -1.0), 1, 0.5));
     // scene.push_back(std::make_unique<Wall>(Material(RGB(0, 1, 0)), vec3(1, .5, -1), point3(-1.0,    0.0, -1.0), 2,  0.5));
@@ -303,7 +318,7 @@ int main(int argc, char *args[])
                 int x, y = 0;
                 SDL_GetMouseState(&x, &y);
                 float input = (x - SCREEN_WIDTH / 2) / static_cast<double>(SCREEN_WIDTH / 2);
-                cam.rotate(-input * .003 , vec3(0,1,0));
+                cam.rotate(-input * .003 );
 
                 auto rt_start_time = std::chrono::high_resolution_clock::now();
                 // std::cout << "start raytracing\n";
