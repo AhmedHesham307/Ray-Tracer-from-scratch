@@ -178,8 +178,6 @@ int main(int argc, char *args[])
 
     std::vector<int64_t> total_times = {};
     std::vector<int64_t> rt_times = {};
-    std::vector<int64_t> outpainting_times = {};
-    std::vector<int64_t> shading_times = {};
     std::vector<int64_t> surface_update_times = {};
     std::vector<int64_t> sdl_rendering_times = {};
 
@@ -334,6 +332,7 @@ int main(int argc, char *args[])
 
 #if defined(RENDER_SCENE)
                 Uint8 *pixels = (Uint8 *)surface->pixels;
+                #pragma omp parallel for
                 for (int i = 0; i < SCREEN_HEIGHT; i++)
                 {
                     for (int j = 0; j < SCREEN_WIDTH; j++)
@@ -360,10 +359,6 @@ int main(int argc, char *args[])
                 // append the measured times
                 auto rt_time = std::chrono::duration_cast<std::chrono::microseconds>(rt_end_time - rt_start_time);
                 rt_times.push_back(rt_time.count());
-                auto outpainting_time = std::chrono::duration_cast<std::chrono::microseconds>(outpainting_end_time - rt_end_time);
-                outpainting_times.push_back(outpainting_time.count());
-                auto shading_time = std::chrono::duration_cast<std::chrono::microseconds>(shading_end_time - outpainting_end_time);
-                shading_times.push_back(shading_time.count());
                 auto surface_time = std::chrono::duration_cast<std::chrono::milliseconds>(surface_end_time - shading_end_time);
                 surface_update_times.push_back(surface_time.count());
                 auto render_time = std::chrono::duration_cast<std::chrono::milliseconds>(render_end_time - surface_end_time);
@@ -384,9 +379,7 @@ int main(int argc, char *args[])
             {
                 std::cout << "Number of frames: " << frame_number << " : " << (std::accumulate(total_times.begin(), total_times.end(), 0) / total_times.size()) << " ms average frame time\n";
                 std::cout << "   " << (std::accumulate(rt_times.begin(), rt_times.end(), 0) / rt_times.size()) << " microseconds for average raytracing\n";
-                std::cout << "   " << ((std::accumulate(outpainting_times.begin(), outpainting_times.end(), 0) / outpainting_times.size())) << " microseconds for average outpainting\n";
-                std::cout << "   " << (std::accumulate(shading_times.begin(), shading_times.end(), 0) / shading_times.size()) << " microseconds for average shading\n";
-                std::cout << "   " << (std::accumulate(surface_update_times.begin(), surface_update_times.end(), 0) / surface_update_times.size()) << " milliseconds for surface average update\n";
+                std::cout << "   " << (std::accumulate(surface_update_times.begin(), surface_update_times.end(), 0) / surface_update_times.size()) << " milliseconds for average tone mapping and surface update\n";
                 std::cout << "   " << ((std::accumulate(sdl_rendering_times.begin(), sdl_rendering_times.end(), 0) / sdl_rendering_times.size())) << " milliseconds for average SDL rendering\n";
             }
 
