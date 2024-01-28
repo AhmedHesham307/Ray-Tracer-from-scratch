@@ -27,11 +27,11 @@ Collision Wall::intersect(ray r) const
 
         // Check if the intersection point is within the bounds of the wall
         if (projectionX >= 0 && projectionX <= length && projectionY >= 0 && projectionY <= width) {
-            return Collision(t, normal, true, 0);
+            return Collision(t, normal, true, -1);
         }
     }
 
-    return Collision(-1, vec3(0, 0, 0), false , 0);
+    return Collision(-1, vec3(0, 0, 0), false , -1);
 }
 
 /*
@@ -56,7 +56,7 @@ Collision Sphere::intersect(ray r) const
     double projection = -1; 
     // ray doesn't collide with the sphere
     if(det < 0) {
-        return Collision(-1, vec3(0,0,0), false , 0);
+        return Collision(-1, vec3(0,0,0), false , -1);
     }
     // ray touches the sphere with only one intersection point
     vec3 intersection_point(0,0,0);
@@ -74,7 +74,7 @@ Collision Sphere::intersect(ray r) const
 
         intersection_point = ray_origin + ray_direction * projection;
     }
-    return Collision(projection * ray_direction.length(), intersection_point - center, true , 0);
+    return Collision(projection * ray_direction.length(), intersection_point - center, true , -1);
 }
 
 std::vector<vec3> Camera::init(){

@@ -67,7 +67,7 @@ double specular(vec3 pos, vec3 normal, vec3 light_pos, vec3 view_dir){
 Collision find_closest_hit(const std::vector<std::unique_ptr<SceneGeometry>> &scene, ray r)
 {
     // create placeholder collision with highest possible distance and no intersection
-    Collision col = Collision(DBL_MAX, vec3(0, 0, 0), false , 0);
+    Collision col = Collision(DBL_MAX, vec3(0, 0, 0), false , -1);
 
     // check all scene objects for a collision closer to the camera than the current closest collision
     for (int j = 0; j < scene.size(); j++)
@@ -90,7 +90,7 @@ RGB recursive_ray_tracing(const std::vector<std::unique_ptr<SceneGeometry>> &sce
 {
     Collision col = find_closest_hit(scene, r);
     
-    if (col.hit_object_index <= 0)
+    if (col.hit_object_index < 0)
     {
         return out_color(r.get_direction());
     }
@@ -150,13 +150,13 @@ int main(int argc, char *args[])
     cam.vfov = 90;
     cam.position = point3(0,0,0);
     cam.lookat   = point3(-1,0,0);
-    cam.vup      = vec3(0,0,1);
+    cam.vup      = vec3(0,0,-1);
     auto u = cam.init();
     // containers for the scene objects
     std::vector<std::unique_ptr<SceneGeometry>> scene = {};
 
     // scene definition
-    scene.push_back(std::make_unique<Sphere>(Material(RGB(1, 0, 0),0.5), point3( 3, 0, 0), .5));
+    scene.push_back(std::make_unique<Sphere>(Material(RGB(1, 0, 0),0.5), point3( 3, 2, 0), .5));
     scene.push_back(std::make_unique<Sphere>(Material(RGB(0, 1, 0),0.5), point3( 1.5, 0, 0), .5));
 
     // scene.push_back(std::make_unique<Wall>(Material(RGB(0, 0, 1)), vec3(2, -1, -1), point3( 0.0,    0.0, -1.0), 1, 0.5));
