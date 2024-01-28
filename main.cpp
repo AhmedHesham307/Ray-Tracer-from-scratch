@@ -332,7 +332,7 @@ int main(int argc, char *args[])
 
 #if defined(RENDER_SCENE)
                 Uint8 *pixels = (Uint8 *)surface->pixels;
-                #pragma omp parallel for
+                #pragma omp parallel for firstprivate(pixels)
                 for (int i = 0; i < SCREEN_HEIGHT; i++)
                 {
                     for (int j = 0; j < SCREEN_WIDTH; j++)
