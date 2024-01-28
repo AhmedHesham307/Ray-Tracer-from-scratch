@@ -88,6 +88,8 @@ class Camera
 private:
     vec3 forward_vec();
     vec3 right_vec();
+    vec3 up_vec() ;
+
 public:
     vec3 direction, fov_top_left, image_top_left, pixel_delta_x , pixel_delta_y;
     double movement_speed, aspect_ratio , image_width, image_height, focal_length , vfov;
@@ -105,5 +107,6 @@ public:
     void left();
     void right();
 
-    void rotate(double angle);
+    void rotate_left_right(double angle);
+    void rotate_up_down(double angle);
 };

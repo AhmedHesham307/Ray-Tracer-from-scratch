@@ -8,7 +8,7 @@ Collision Wall::intersect(ray r) const
 
     // Calculate the parameter t for the intersection point
     double t = vec3::dot(position - r.get_origin() , normal) / denominator;
-    std::cout << t << std::endl;
+    
     // Check if the intersection point is in front of the ray
     if (t > 0) {
         // Calculate the intersection point
@@ -106,11 +106,16 @@ std::vector<vec3> Camera::init(){
     }
 
 vec3 Camera::forward_vec(){
-    return direction;
+    return direction.normalize();
 }
 
 vec3 Camera::right_vec(){
-    return (vec3::cross(vup,  ((position - lookat).normalize()))).normalize();
+    return (vec3::cross(direction,vup)).normalize();
+}
+
+vec3 Camera::up_vec()
+{
+    return (vec3::cross(right_vec() , direction)).normalize();
 }
 
 void Camera::forward(){
@@ -129,11 +134,34 @@ void Camera::left(){
     position = position - right_vec() * movement_speed;
 }
 
-void Camera::rotate(double angle)
+void Camera::rotate_left_right(double angle)
 {
     double current_angle = std::atan2(direction.y, direction.x);
     double new_angle = current_angle + angle;
-    direction = vec3(std::cos(new_angle), std::sin(new_angle), 0);
+
+    double base_length = vec3(direction.x, direction.y,0).length();
+    direction = vec3(std::cos(new_angle) * base_length, std::sin(new_angle) * base_length, direction.z);
+    vup = up_vec();
+}
+
+void Camera::rotate_up_down(double angle)
+{
+
+    double base_length = vec3(direction.x, direction.y,0).length();
+    double pitch_angle = std::atan2(direction.z, base_length);
+
+    double new_pitch_angle = pitch_angle + angle;
+
+    new_pitch_angle = new_pitch_angle > M_PI / 2 ? pitch_angle : new_pitch_angle;
+    new_pitch_angle = new_pitch_angle < -M_PI / 2 ? -pitch_angle : new_pitch_angle;
+
+    double new_z = std::sin(new_pitch_angle);
+
+    double new_base_length = std::cos(new_pitch_angle);
+
+    vec3 new_base_vector = vec3(direction.x, direction.y,0).normalize() * new_base_length;
+    direction = vec3(new_base_vector.x, new_base_vector.y, new_z);
+    vup = up_vec();
 }
 
 

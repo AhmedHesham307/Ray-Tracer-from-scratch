@@ -11,7 +11,7 @@
 
 #define RENDER_SCENE
 // #define TEXTURE_TEST
-#define LIGHT_POS point3(2, 0, 0)
+#define LIGHT_POS point3(0, 0, 0)
 #define GROUND_COLOR RGB(0.025, 0.05, 0.075)
 #define SKYCOLOR_LOW RGB(0.36, 0.45, 0.57)
 #define SKYCOLOR_HIGH RGB(0.14, 0.21, 0.49)
@@ -156,11 +156,11 @@ int main(int argc, char *args[])
     std::vector<std::unique_ptr<SceneGeometry>> scene = {};
 
     // scene definition
-    scene.push_back(std::make_unique<Sphere>(Material(RGB(1, 0, 0),0.5), point3( 3, 2, 0), .5));
+    // scene.push_back(std::make_unique<Sphere>(Material(RGB(1, 0, 0),0.5), point3( 3, 2, 0), .5));
     scene.push_back(std::make_unique<Sphere>(Material(RGB(0, 1, 0),0.5), point3( 1.5, 0, 0), .5));
 
-    // scene.push_back(std::make_unique<Wall>(Material(RGB(0, 0, 1)), vec3(2, -1, -1), point3( 0.0,    0.0, -1.0), 1, 0.5));
-    // scene.push_back(std::make_unique<Wall>(Material(RGB(0, 1, 0)), vec3(1, .5, -1), point3(-1.0,    0.0, -1.0), 2,  0.5));
+    scene.push_back(std::make_unique<Wall>(Material(RGB(0, 0, 1)), point3(3.0, 2, 0) , vec3(0,-1,0), 1, 1));
+    scene.push_back(std::make_unique<Wall>(Material(RGB(0, 1, 0)), point3(3.0, -3, 0), vec3(0,1,0), 2,  2));
 
 
     int frame_number = 0;
@@ -316,9 +316,12 @@ int main(int argc, char *args[])
                 Also, this solution does not mess with the close window button, like the other implementations did.
                 */
                 int x, y = 0;
-                SDL_GetMouseState(&x, &y);
-                float input = (x - SCREEN_WIDTH / 2) / static_cast<double>(SCREEN_WIDTH / 2);
-                cam.rotate(-input * .003 );
+                // SDL_GetMouseState(&x, &y);
+                // float x_input = (x - cam.image_width / 2) / static_cast<double>(cam.image_width / 2);
+                // float y_input = (y - cam.image_height / 2) / static_cast<double>(cam.image_height / 2);
+                // cam.rotate_left_right(-x_input * .05);
+                // cam.rotate_up_down(-y_input * .05);
+
 
                 auto rt_start_time = std::chrono::high_resolution_clock::now();
                 // std::cout << "start raytracing\n";
