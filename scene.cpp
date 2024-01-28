@@ -30,19 +30,23 @@ Collision Wall::intersect(ray r) const
 Collision Sphere::intersect(ray r) const
 {
     vec3 oc = r.origin - center;
-    double b = oc.dot(r.direction.normalize());
+    double b = oc.dot(r.direction);
     double c = oc.dot(oc) - radius * radius;
-    double h = b * b - c;
-    if (h < 0.0){
-        return Collision(-1, vec3(0,0,0), false); // No intersection
-    }
-    h = std::sqrt(h);
-    double t1 = -b - h;
-    double t2 = -b + h;
-    if (t1 < 0.0){
-        return Collision(t2, (r.origin + r.direction * t2 - center).normalize(), true); // Potentially inside
-    }
-    return Collision(t1, (r.origin + r.direction * t1 - center).normalize(), true);
+    double h = b*b - c;
+    if( h<0.0 ) return Collision(-1, vec3(0,0,0), false); // no intersection
+    h = sqrt( h );
+    // ray touches the sphere with only one intersection point
+    double p1 = -b - h;
+    double p2 = -b + h;
+    double distance = -1;
+    
+    if(p1 < 0.0){
+        distance = p2;
+    }else distance = p1;
+
+    vec3 intersection_point = r.origin + r.direction * distance;
+
+    return Collision(distance, intersection_point - center, true);
 }
 
 vec3 Camera::view_dir(double image_space_x, double image_space_y) const

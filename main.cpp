@@ -13,7 +13,7 @@
 #define RENDER_SCENE
 // #define TEXTURE_TEST
 
-#define LIGHT_POS point3(2, 0, 0)
+#define LIGHT_POS point3(1, 10, 4)
 #define GROUND_COLOR RGB(0.025, 0.05, 0.075)
 #define SKYCOLOR_LOW RGB(0.36, 0.45, 0.57)
 #define SKYCOLOR_HIGH RGB(0.14, 0.21, 0.49)
@@ -70,14 +70,16 @@ double specular(vec3 pos, vec3 normal, vec3 light_pos, vec3 view_dir)
 Collision find_closest_hit(const std::vector<std::unique_ptr<SceneGeometry>> &scene, ray r)
 {
     // create placeholder collision with highest possible distance and no intersection
-    Collision col = Collision(DBL_MAX, vec3(0, 0, 0), false);
+    Collision col = Collision(-1, vec3(0, 0, 0), false);
     col.hit_object_index = -1;
+
     // check all scene objects for a collision closer to the camera than the current closest collision
     for (int j = 0; j < scene.size(); j++)
     {
         Collision wall_col = scene.at(j)->intersect(r);
-        if (wall_col.distance > 0 && wall_col.distance < col.distance)
+        if (wall_col.distance > 0 && (wall_col.distance < col.distance || col.distance < 0))
         {
+            
             col = wall_col;
             col.hit_object_index = j;
         }
@@ -85,10 +87,10 @@ Collision find_closest_hit(const std::vector<std::unique_ptr<SceneGeometry>> &sc
     return col;
 }
 
-RGB recursive_ray_tracing(const std::vector<std::unique_ptr<SceneGeometry>> &scene, ray r, int remaining_iterations = 0)
+RGB recursive_ray_tracing(const std::vector<std::unique_ptr<SceneGeometry>> &scene, ray r, int remaining_iterations = 10)
 {
     Collision col = find_closest_hit(scene, r);
-    if (col.hit_object_index < 0)
+    if (col.distance < 0)
     {
         return out_color(r.direction);
     }
@@ -149,7 +151,12 @@ int main(int argc, char *args[])
     std::vector<std::unique_ptr<SceneGeometry>> scene = {};
 
     // scene definition
-    scene.push_back(std::make_unique<Sphere>(point3(-3, 0, 0), 1, Material(RGB(1, 1, 0), .5)));
+    scene.push_back(std::make_unique<Sphere>(point3(2, 0, 0), .5, Material(RGB(1, 0, 0), .5)));
+    scene.push_back(std::make_unique<Sphere>(point3(-2, 0, 0), .5, Material(RGB(1, 0, 0), .5)));
+    scene.push_back(std::make_unique<Sphere>(point3(0, 0, 2), 1, Material(RGB(0, 0, 1), .5)));
+    scene.push_back(std::make_unique<Sphere>(point3(0, 0, -2), .5, Material(RGB(0, 0, 1), .5)));
+    scene.push_back(std::make_unique<Sphere>(point3(0, 2, 0), 1, Material(RGB(0, 1, 0), .5)));
+    scene.push_back(std::make_unique<Sphere>(point3(0, -2, 0), .5, Material(RGB(0, 1, 0), .5)));
 
     // scene.push_back(std::make_unique<Wall>(vec2(2, -1), point2(4, 3), 1, Material(RGB(0, 0, 1), 0.5)));
     // scene.push_back(std::make_unique<Wall>(vec2(1, .5), point2(4, -3), 2, Material(RGB(0, 1, 0), 0.5)));

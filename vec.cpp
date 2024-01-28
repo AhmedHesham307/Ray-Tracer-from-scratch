@@ -64,7 +64,7 @@ double vec3::length() const
 
 double vec3::dot(vec3 other) const
 {
-    return x * x + y * y + z * z;
+    return x * other.x + y * other.y + z * other.z;
 }
 
 vec3 vec3::normalize() const
