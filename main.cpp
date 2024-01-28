@@ -17,8 +17,8 @@
 #define GROUND_COLOR RGB(0.025, 0.05, 0.075)
 #define SKYCOLOR_LOW RGB(0.36, 0.45, 0.57)
 #define SKYCOLOR_HIGH RGB(0.14, 0.21, 0.49)
-#define SUN_COLOR RGB(1.64, 1.27, 0.99)
-#define SUN_DIRECTION vec3(.7, .4, .7)
+#define SUN_COLOR RGB(1, 1, 1)
+
 
 const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
@@ -28,14 +28,16 @@ constexpr float aspect = 4 / 3;
 /*
  * calculate a background color based on the ray direction
  */
-RGB out_color(vec3 v)
+RGB out_color(vec3 v) 
 {
     if (v.z < 0.0)
         return GROUND_COLOR;
     v = v.normalize();
     const float skyGradient = 1. / 4.;
     vec3 skyColor = vec3::lerp(SKYCOLOR_LOW, SKYCOLOR_HIGH, std::pow(v.z, skyGradient));
-    return skyColor;
+    double sun_amount = std::pow((v.dot(LIGHT_POS.normalize()) + 1) / 2, 20);
+    sun_amount = std::min(std::max(sun_amount, 0.), 1.);
+    return vec3::lerp(skyColor, SUN_COLOR, sun_amount);
 }
 
 /*
@@ -47,6 +49,14 @@ double diffuse_shading(vec3 pos, vec3 normal, vec3 light_pos)
     // This is a standard, physically based(tm) diffuse lighting calculation
     double lambertian = light_dir.dot(normal.normalize());
     return lambertian > 0 ? lambertian : 0;
+}
+
+/*
+* map linear RGB (the color space used for shading) to an approximation of the ACES tone mapping curve (color that looks good on screen but is a pain to perform shading calculations with)
+* adapted from an assignment from course IN0039
+*/
+RGB tone_mapped(RGB x){
+    return ((x*((x * 2.51) + vec3(0.03, 0.03, 0.03))/(x*((x * 2.43) + vec3(0.59, .59, .59))+ vec3(0.14, .14, .14))).clamp()).pow(1.0 / 2.2);
 }
 
 /*
@@ -325,7 +335,7 @@ int main(int argc, char *args[])
                     for (int j = 0; j < SCREEN_WIDTH; j++)
                     {
 
-                        RGB val = frame_buffer.at(i).at(j);
+                        RGB val = tone_mapped(frame_buffer.at(i).at(j));
                         Uint32 *pixel = static_cast<Uint32 *>(surface->pixels) + i * surface->pitch / 4 + j;
                         *pixel = SDL_MapRGBA(surface->format, 255, val.x * 255, val.y * 255, val.z * 255);
                     }

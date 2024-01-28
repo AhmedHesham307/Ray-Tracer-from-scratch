@@ -27,6 +27,7 @@ Collision Wall::intersect(ray r) const
 }
 */
 
+// Ray sphere intersection function adapted from this blog https://iquilezles.org/articles/intersectors/
 Collision Sphere::intersect(ray r) const
 {
     vec3 oc = r.origin - center;

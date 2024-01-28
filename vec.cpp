@@ -89,6 +89,10 @@ vec3 vec3::operator*(const double d) const{
     return vec3(x * d, y * d, z * d);
 }
 
+vec3 vec3::operator/(const vec3 other) const{
+    return vec3(x / other.x, y / other.y, z / other.z);
+}
+
 vec3 vec3::lerp(vec3 first, vec3 second, double d){
     return vec3(first.x + d * (second.x - first.x), first.y + d * (second.y - first.y), first.z + d * (second.z - first.z));
 }
@@ -107,4 +111,8 @@ vec3 vec3::clamp() const{
 
 void vec3::print() const{
     std::cout << x << ", " << y << ", " << z << "\n";
+}
+
+vec3 vec3::pow(const double e) const{
+    return vec3(std::pow(x, e), std::pow(y, e), std::pow(z, e));
 }

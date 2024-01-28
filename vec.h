@@ -55,11 +55,13 @@ struct vec3
     vec3 operator-(const vec3 other) const;
     vec3 operator*(const vec3 other) const;
     vec3 operator*(const double d) const;
+    vec3 operator/(const vec3 other) const;
 
     static vec3 lerp(const vec3 first, const vec3 second, double d);
     vec3 reflect(const vec3 normal) const;
     void print() const;
     vec3 clamp() const;
+    vec3 pow(const double e) const;
 };
 
 using RGB = vec3;
