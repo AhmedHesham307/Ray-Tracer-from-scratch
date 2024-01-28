@@ -59,29 +59,20 @@ public:
     Collision intersect(ray r) const override;
 };
 
-/*
 class Wall : public SceneGeometry
 {
-    vec2 direction;
-    point2 origin;
-    double upper_bound;
-
-
-    public:
-    Wall(vec2 direction, point2 origin, double upper_bound, Material mat=DEFAULT_MAT) : SceneGeometry(mat), direction{direction}, origin{origin}, upper_bound{upper_bound} {}
-    Collision intersect(ray r) const override;
-
-};
-
-class Circle : public SceneGeometry
-{
-    point2 center;
-    double radius;
+    point3 position;  // Center or starting point of the wall
+    vec3 normal;      // Normal vector representing the orientation of the wall
+    double length;     // Length of the wall
+    double width;      // Width of the wall (optional)
 
 public:
-    Circle(point2 center, double radius, Material mat = DEFAULT_MAT) : SceneGeometry(mat), center{center}, radius{radius} {}
+    Wall(point3 position = point3(0,0,0), vec3 normal = vec3(0,0,0), double length= 1.0, double width = 1.0, Material mat = DEFAULT_MAT)
+        : SceneGeometry{mat}, position{position}, normal{normal.normalize()}, length{length}, width{width} {}
     Collision intersect(ray r) const override;
-};*/
+};
+
+
 
 struct Camera
 {
@@ -110,11 +101,7 @@ struct Camera
     */
     vec3 local_to_world(const vec3 local) const;
 
-    Camera(vec3 dir, point3 pos, vec3 up, double focal_length, double sensor_size) : direction{dir}, position{pos}, up{up}, focal_length{focal_length}, sensor_size{sensor_size}, ortho_f_cache{forward_vec()}, ortho_r_cache{right_vec()}, ortho_u_cache{up_vec()} {
-        ortho_r_cache.print();
-        ortho_f_cache.print();
-        ortho_u_cache.print();
-    }
+    Camera(vec3 dir, point3 pos, vec3 up, double focal_length, double sensor_size) : direction{dir}, position{pos}, up{up}, focal_length{focal_length}, sensor_size{sensor_size}, ortho_f_cache{forward_vec()}, ortho_r_cache{right_vec()}, ortho_u_cache{up_vec()} {}
 
     /*
     * map a position in the image space to a ray originating from the camera
@@ -134,12 +121,15 @@ struct Camera
     void left();
     void right();
 
-    void rotate(double angle);
+    void rotate_left_right(double angle);
+    void rotate_up_down(double angle);
 
 private:
     // please note that these vectors are not necessarily orthogonal!
     vec3 direction;
     vec3 up;
+
+    void update_ortho_cache();
 
     // these are cached values for the orthogonal basis of the camera in the world.
     // Without caching, for every ray generated, those values would need to be calculated again

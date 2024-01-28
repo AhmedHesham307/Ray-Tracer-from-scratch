@@ -13,11 +13,12 @@
 #define RENDER_SCENE
 // #define TEXTURE_TEST
 
-#define LIGHT_POS point3(1, 10, 4)
+#define LIGHT_POS point3(1, 10, 3)
 #define GROUND_COLOR RGB(0.025, 0.05, 0.075)
 #define SKYCOLOR_LOW RGB(0.36, 0.45, 0.57)
 #define SKYCOLOR_HIGH RGB(0.14, 0.21, 0.49)
 #define SUN_COLOR RGB(1, 1, 1)
+
 
 
 const int SCREEN_WIDTH = 640;
@@ -131,6 +132,7 @@ void rt_scene(const std::vector<std::unique_ptr<SceneGeometry>> &scene, const Ca
 {
     double step_x = (1. / static_cast<double>(SCREEN_WIDTH));
     double step_y = (1. / static_cast<double>(SCREEN_HEIGHT));
+    #pragma omp parallel for firstprivate(step_x, step_y) schedule(dynamic)
     for (int i = 0; i < SCREEN_HEIGHT; i++)
     {
         for (int j = 0; j < SCREEN_WIDTH; j++)
@@ -161,6 +163,7 @@ int main(int argc, char *args[])
     std::vector<std::unique_ptr<SceneGeometry>> scene = {};
 
     // scene definition
+ 
     scene.push_back(std::make_unique<Sphere>(point3(2, 0, 0), .5, Material(RGB(1, 0, 0), .5)));
     scene.push_back(std::make_unique<Sphere>(point3(-2, 0, 0), .5, Material(RGB(1, 0, 0), .5)));
     scene.push_back(std::make_unique<Sphere>(point3(0, 0, 2), 1, Material(RGB(0, 0, 1), .5)));
@@ -314,9 +317,10 @@ int main(int argc, char *args[])
                 */
                 int x, y = 0;
                 SDL_GetMouseState(&x, &y);
-                float input = (x - SCREEN_WIDTH / 2) / static_cast<double>(SCREEN_WIDTH / 2);
-                // cam.rotate(-input * .003);
-
+                float x_input = (x - SCREEN_WIDTH / 2) / static_cast<double>(SCREEN_WIDTH / 2);
+                float y_input = (y - SCREEN_HEIGHT / 2) / static_cast<double>(SCREEN_HEIGHT / 2);
+                cam.rotate_left_right(-x_input * .05);
+                cam.rotate_up_down(-y_input * .05);
                 auto rt_start_time = std::chrono::high_resolution_clock::now();
                 // std::cout << "start raytracing\n";
                 //  Render and create the outpainted stencil
