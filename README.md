@@ -1,7 +1,7 @@
 # Raytracing Project
 ### by Advanced Programming Team 85
 ## Third Sprint
-![Screenshot from the current version](images/Sprint3.jpeg)
+![Screenshot from the current version](images/Sprint3.png)
 1. New cmake based build procedure:
     1. Make sure you have installed SDL for rendering to screen. On Debian-derived systems, i.e. Ubuntu or Mint, you can install this library with the command `sudo apt install libsdl2-dev`. You also have to install OpenMP for parallel execution on multicore CPUs.
     2. `mkdir build && cd build` to create the build directory and switch to that directory.
@@ -16,7 +16,7 @@
 7. Performance optimization:
 To increase performance we implemented parallelization on multicore CPUs using OpenMP. On a 20 thread Intel 13900H using all cores gives an almost linear speedup on raytracing and about 8x speedup for tonemapping. With higher numbers of geometry primitives, acceleration structures would greatly enhance raytracing performance, as would vectorized checking for collision with multiple primitives/bounding boxes. We did not implement an acceleration structure because that would be way out of the scope of an advanced programming bonus project. 
 ## Second Sprint
-![Screenshot from the current version](images/Sprint1.png)
+![Screenshot from the previous version](images/Sprint1.png)
 1. New cmake based build procedure: 
 2. Refactor the scene geometry description to utilize object oriented programming features. Both `Circle` and `Box` now inherit from `SceneGeometry`, a purely virtual class providing an interface for intersection with rays. 
 3. Implement movement using the arrow keys/WASD and camera rotation using the mouse. To rotate the camera to the left, move the cursor to the left half of the screen. To rotate right, move the cursor to the right half of the screen. If you do not want to rotate the camera, move the mouse to the center of the screen. We understand that this is janky and kinda suboptimal, but it is the only mouse input that consistently works with WSL2 GUI windows. Warping the cursor to the center of the screen does not work on WSL2, so with standard First-Person-Game-style camera rotation based on the movement (not the position) of the mouse, rotation would be limited by the cursor reaching the edges of the GUI window. The current implementation at least allows for unlimited rotation in every direction.
