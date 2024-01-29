@@ -35,6 +35,7 @@ struct Material
     // controls specular highlight shape
     double specular_exponent;
     Material(RGB color, double metallic = .5, double ambient = .1, double diffuse = .9, double specular = .4, double specular_exponent = 50) : color{color}, diffuse{diffuse}, ambient{ambient}, metallic{metallic}, specular{specular}, specular_exponent{specular_exponent} {}
+
 };
 
 class SceneGeometry
@@ -65,10 +66,12 @@ class Wall : public SceneGeometry
     vec3 normal;      // Normal vector representing the orientation of the wall
     double length;     // Length of the wall
     double width;      // Width of the wall (optional)
+    vec3 wall_up;
+    vec3 wall_right;
 
 public:
-    Wall(point3 position = point3(0,0,0), vec3 normal = vec3(0,0,0), double length= 1.0, double width = 1.0, Material mat = DEFAULT_MAT)
-        : SceneGeometry{mat}, position{position}, normal{normal.normalize()}, length{length}, width{width} {}
+    Wall(point3 position, vec3 normal, vec3 wall_up, double length= 1.0, double width = 1.0, Material mat = DEFAULT_MAT)
+        : SceneGeometry{mat}, position{position}, normal{normal.normalize()}, wall_right{normal.cross(wall_up).normalize()}, wall_up{wall_right.cross(normal).normalize()}, length{length}, width{width} {}
     Collision intersect(ray r) const override;
 };
 
@@ -136,4 +139,11 @@ private:
     vec3 ortho_f_cache;
     vec3 ortho_r_cache;
     vec3 ortho_u_cache;
+};
+
+struct Light{
+    point3 position;
+    RGB color;
+
+    Light(point3 pos, RGB color) : position{pos}, color{color} {}
 };

@@ -13,15 +13,14 @@ Collision Wall::intersect(ray r) const
         vec3 intersection_point = r.origin + r.direction * t;
 
         // Calculate the basis vectors for the local coordinate system of the wall
-        vec3 wallRight = (normal.cross(vec3(0, 0, 1))).normalize();
-        vec3 wallUp = (wallRight.cross(normal)).normalize();
+       
 
         // Calculate the vector from the wall position to the intersection point
         vec3 wallToIntersection = intersection_point - position;
 
         // Project the wallToIntersection vector onto the wall's local coordinate system
-        double projectionX = wallToIntersection.dot(wallRight);
-        double projectionY = wallToIntersection.dot(wallUp);
+        double projectionX = wallToIntersection.dot(wall_right);
+        double projectionY = wallToIntersection.dot(wall_up);
 
         // Check if the intersection point is within the bounds of the wall
         if (projectionX >= 0 && projectionX <= length && projectionY >= 0 && projectionY <= width) {
@@ -151,3 +150,4 @@ void Camera::rotate_up_down(double angle)
 
     update_ortho_cache();
 }
+

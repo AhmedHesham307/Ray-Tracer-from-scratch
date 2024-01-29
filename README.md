@@ -1,7 +1,7 @@
 # Raytracing Project
 ### by Advanced Programming Team 85
 ## Third Sprint
-![Screenshot from the current version](images/Sprint2.jpeg)
+![Screenshot from the current version](images/Sprint3.jpeg)
 1. New cmake based build procedure:
     1. Make sure you have installed SDL for rendering to screen. On Debian-derived systems, i.e. Ubuntu or Mint, you can install this library with the command `sudo apt install libsdl2-dev`. You also have to install OpenMP for parallel execution on multicore CPUs.
     2. `mkdir build && cd build` to create the build directory and switch to that directory.
@@ -13,6 +13,8 @@
 4. used `OpenMP` to speed up raytracing (lines of the image are distributed across hardware threads) and tone mapping (a new addition with sprint 3).
 5. Added a sky to the scene and a `sun` represented as a global lighting in the space.
 6. You can now move and rotate the camera in 3d using the mouse and arrow keys. Unfortunately we are still restricted by the limitations of WSL2 GUIs which do not allow for constraining the cursor to the window. The camera still rotates based on the cursor being away from the center, not based on mouse movement like in any first person game.
+7. Performance optimization:
+To increase performance we implemented parallelization on multicore CPUs using OpenMP. On a 20 thread Intel 13900H using all cores gives an almost linear speedup on raytracing and about 8x speedup for tonemapping. With higher numbers of geometry primitives, acceleration structures would greatly enhance raytracing performance, as would vectorized checking for collision with multiple primitives/bounding boxes. We did not implement an acceleration structure because that would be way out of the scope of an advanced programming bonus project. 
 ## Second Sprint
 ![Screenshot from the current version](images/Sprint1.png)
 1. New cmake based build procedure: 

@@ -11,16 +11,16 @@
 #include <numeric>
 #include <chrono>
 
+#include <random>
+
 #define RENDER_SCENE
 // #define TEXTURE_TEST
 
-#define LIGHT_POS point3(1, 10, 0)
+#define SUN_POS point3(1000, 0, 10)
 #define GROUND_COLOR RGB(0.025, 0.05, 0.075)
 #define SKYCOLOR_LOW RGB(0.36, 0.45, 0.57)
 #define SKYCOLOR_HIGH RGB(0.14, 0.21, 0.49)
-#define SUN_COLOR RGB(1, 1, 1)
-
-
+#define SUN_COLOR RGB(.9, .9, .9)
 
 const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
@@ -30,50 +30,60 @@ constexpr float aspect = 4 / 3;
 /*
  * calculate a background color based on the ray direction
  */
-RGB out_color(vec3 v) 
+RGB out_color(vec3 v)
 {
     if (v.z < 0.0)
         return GROUND_COLOR;
     v = v.normalize();
     const float skyGradient = 1. / 4.;
     vec3 skyColor = vec3::lerp(SKYCOLOR_LOW, SKYCOLOR_HIGH, std::pow(v.z, skyGradient));
-    double sun_amount = std::pow((v.dot(LIGHT_POS.normalize()) + 1) / 2, 100);
+    double sun_amount = std::pow((v.dot(SUN_POS.normalize()) + 1) / 2, 100);
     sun_amount = std::min(std::max(sun_amount, 0.), 1.);
     return vec3::lerp(skyColor, SUN_COLOR, sun_amount);
+}
+
+Material random_material(std::uniform_int_distribution<> &distribution, std::mt19937 &gen)
+{
+    return Material(RGB(distribution(gen) / 255., distribution(gen) / 255., distribution(gen) / 255.), distribution(gen) / 255., distribution(gen) / 255., distribution(gen) / 255., distribution(gen) / 255.);
 }
 
 /*
  * diffuse lighting component: The fraction of light that is spread equally in all directions
  */
-double diffuse_shading(vec3 pos, vec3 normal, vec3 light_pos)
+RGB diffuse_shading(vec3 pos, vec3 normal, Light l)
 {
-    vec3 light_dir = (light_pos - pos).normalize();
+    vec3 light_vec = l.position - pos;
+    vec3 light_dir = light_vec.normalize();
     // This is a standard, physically based(tm) diffuse lighting calculation
     double lambertian = light_dir.dot(normal.normalize());
-    return lambertian > 0 ? lambertian : 0;
+    // scale by inverse square distance from the light source
+    return lambertian > 0 ? l.color * lambertian : RGB(0, 0, 0);
 }
 
 /*
-* map linear RGB (the color space used for shading) to an approximation of the ACES tone mapping curve (color that looks good on screen but is a pain to perform shading calculations with)
-* adapted from an assignment from course IN0039
-*/
-RGB tone_mapped(RGB x){
-    return ((x*((x * 2.51) + vec3(0.03, 0.03, 0.03))/(x*((x * 2.43) + vec3(0.59, .59, .59))+ vec3(0.14, .14, .14))).clamp()).pow(1.0 / 2.2);
+ * map linear RGB (the color space used for shading) to an approximation of the ACES tone mapping curve (color that looks good on screen but is a pain to perform shading calculations with)
+ * adapted from an assignment from course IN0039
+ */
+RGB tone_mapped(RGB x)
+{
+    return ((x * ((x * 2.51) + vec3(0.03, 0.03, 0.03)) / (x * ((x * 2.43) + vec3(0.59, .59, .59)) + vec3(0.14, .14, .14))).clamp()).pow(1.0 / 2.2);
 }
 
 /*
  * specular lighting component: The fraction of lights that forms highlights on glossy objects
  */
-double specular(vec3 pos, vec3 normal, vec3 light_pos, vec3 view_dir)
+RGB specular(vec3 pos, vec3 normal, Light l, vec3 view_dir)
 {
     // Blinn-Phong specular
     view_dir = view_dir.normalize();
     normal = normal.normalize();
-    vec3 light_dir = (light_pos - pos).normalize();
+    vec3 light_vec = l.position - pos;
+    vec3 light_dir = light_vec.normalize();
 
     vec3 halfway = (view_dir + light_dir).normalize();
     double result = halfway.dot(normal);
-    return result > 0 ? result : 0;
+    // scale by inverse square distance from the light source
+    return result > 0 ? l.color * result : RGB(0, 0, 0);
 }
 
 /*
@@ -91,7 +101,7 @@ Collision find_closest_hit(const std::vector<std::unique_ptr<SceneGeometry>> &sc
         Collision wall_col = scene.at(j)->intersect(r);
         if (wall_col.distance > 0 && (wall_col.distance < col.distance || col.distance < 0))
         {
-            
+
             col = wall_col;
             col.hit_object_index = j;
         }
@@ -99,7 +109,7 @@ Collision find_closest_hit(const std::vector<std::unique_ptr<SceneGeometry>> &sc
     return col;
 }
 
-RGB recursive_ray_tracing(const std::vector<std::unique_ptr<SceneGeometry>> &scene, ray r, int remaining_iterations = 10)
+RGB recursive_ray_tracing(const std::vector<std::unique_ptr<SceneGeometry>> &scene, const std::vector<Light> lights, ray r, int remaining_iterations = 10)
 {
     Collision col = find_closest_hit(scene, r);
     if (col.distance < 0)
@@ -110,38 +120,56 @@ RGB recursive_ray_tracing(const std::vector<std::unique_ptr<SceneGeometry>> &sce
     {
         vec3 pos = r.origin + r.direction * col.distance;
         Material mat = scene.at(col.hit_object_index)->get_material();
-        double diffuse_intensity = diffuse_shading(r.origin + r.direction * col.distance, col.normal, LIGHT_POS);
-        double specular_intensity = std::pow(specular(pos, col.normal, LIGHT_POS, r.direction * (-1)), mat.specular_exponent);
+
+        RGB diffuse_light = RGB(0, 0, 0);
+        RGB specular_light = RGB(0, 0, 0);
+
         point3 start_pos = pos + col.normal * .0001;
-        ray light_ray = ray((LIGHT_POS - start_pos).normalize(), start_pos);
-        Collision light_sample = find_closest_hit(scene, light_ray);
-        if(!(light_sample.distance < 0 || light_sample.distance > (LIGHT_POS - start_pos).length())){
-            //object is occluded
-            diffuse_intensity = 0;
-            specular_intensity = 0;
+
+        // sun sample
+
+        ray sun_ray = ray((SUN_POS - start_pos).normalize(), start_pos);
+        Collision light_sample = find_closest_hit(scene, sun_ray);
+        if (light_sample.distance < 0 || light_sample.distance > (SUN_POS - start_pos).length())
+        {
+            diffuse_light = diffuse_light + diffuse_shading(start_pos, col.normal, Light(SUN_POS, SUN_COLOR));
+            specular_light = specular_light + specular(pos, col.normal, Light(SUN_POS, SUN_COLOR), r.direction * (-1)).pow(mat.specular_exponent);
         }
-        RGB local_color = mat.color * (diffuse_intensity * mat.diffuse + specular_intensity * mat.specular + mat.ambient);
+
+        // sample the lights in the scene
+        for (int i = 0; i < lights.size(); i++)
+        {
+            ray light_ray = ray((lights.at(i).position - start_pos).normalize(), start_pos);
+            Collision light_sample = find_closest_hit(scene, light_ray);
+            if (light_sample.distance < 0 || light_sample.distance > (SUN_POS - start_pos).length())
+            {
+                diffuse_light = diffuse_light + diffuse_shading(start_pos, col.normal, lights.at(i));
+                specular_light = specular_light + specular(pos, col.normal, lights.at(i), r.direction * (-1)).pow(mat.specular_exponent);
+            }
+        }
+
+        RGB local_color = mat.color * (diffuse_light * mat.diffuse) + specular_light * mat.specular + mat.color * mat.ambient;
         if (remaining_iterations <= 0)
         {
             return local_color;
         }
 
         // start new ray minimally offset from the surface so that the new ray can not hit the surface again
-        
+
         vec3 reflected_dir = r.direction.reflect(col.normal);
         ray next_ray = ray(reflected_dir, start_pos);
 
-        RGB rt_color = recursive_ray_tracing(scene, next_ray, remaining_iterations - 1);
+        RGB rt_color = recursive_ray_tracing(scene, lights, next_ray, remaining_iterations - 1);
 
         return vec3::lerp(local_color, rt_color, mat.metallic);
     }
 }
 
-void rt_scene(const std::vector<std::unique_ptr<SceneGeometry>> &scene, const Camera &cam, std::vector<std::vector<RGB>> &frame_buffer)
+void rt_scene(const std::vector<std::unique_ptr<SceneGeometry>> &scene, const std::vector<Light> lights, const Camera &cam, std::vector<std::vector<RGB>> &frame_buffer)
 {
     double step_x = (1. / static_cast<double>(SCREEN_WIDTH));
     double step_y = (1. / static_cast<double>(SCREEN_HEIGHT));
-    #pragma omp parallel for firstprivate(step_x, step_y) schedule(dynamic)
+#pragma omp parallel for firstprivate(step_x, step_y) schedule(dynamic)
     for (int i = 0; i < SCREEN_HEIGHT; i++)
     {
         for (int j = 0; j < SCREEN_WIDTH; j++)
@@ -152,7 +180,7 @@ void rt_scene(const std::vector<std::unique_ptr<SceneGeometry>> &scene, const Ca
             vec3 sample_dir = cam.view_dir(screen_space_x, screen_space_y);
             ray camera_ray(sample_dir, cam.position);
 
-            frame_buffer.at(i).at(j) = recursive_ray_tracing(scene, camera_ray);
+            frame_buffer.at(i).at(j) = recursive_ray_tracing(scene, lights, camera_ray);
         }
     }
     /*
@@ -171,12 +199,18 @@ int main(int argc, char *args[])
     // containers for the scene objects
     std::vector<std::unique_ptr<SceneGeometry>> scene = {};
 
+    std::vector<Light> lights = {};
+
+    lights.push_back(Light(point3(0, 10, 10), RGB(.3, .3, 0)));
+    lights.push_back(Light(point3(0, -10, 10), RGB(0, .3, .3)));
+
     // scene definition
 
     // tum blue
-    Material tum_mat = Material(RGB(0, 20. / 255., 50. / 255.), .2, 1, .9, .5, 10);
-    double tum_distance = 20;
- 
+    Material tum_mat = Material(RGB(0, 20. / 255., 50. / 255.), .2, 1, .05, 1, 10);
+    Material floor_mat = Material(RGB(1, 1, 1), .2, .2, .2, .2, 10);
+    double tum_distance = 40;
+
     // tum logo
     scene.push_back(std::make_unique<Sphere>(point3(tum_distance, 9, 4), 1, tum_mat));
 
@@ -218,9 +252,20 @@ int main(int argc, char *args[])
     scene.push_back(std::make_unique<Sphere>(point3(tum_distance, -9, -2), 1, tum_mat));
     scene.push_back(std::make_unique<Sphere>(point3(tum_distance, -9, -4), 1, tum_mat));
 
-    // scene.push_back(std::make_unique<Sphere>(point3(0, 2, 0), 1, Material(RGB(0, 1, 0), .5)));
+    std::random_device rd;                                // obtain a random number from hardware
+    std::mt19937 gen(rd());                               // seed the generator
+    std::uniform_int_distribution<> distribution(0, 255); // define the range
 
-    // scene.push_back(std::make_unique<Wall>(vec2(1, .5), point2(4, -3), 2, Material(RGB(0, 1, 0), 0.5)));
+    double winding = .2;
+    double x_step = .8;
+    double radius = 15;
+    for (int i = 0; i < 2; i++)
+    {
+        for (int j = 0; j < 30; j++)
+        {
+            scene.push_back(std::make_unique<Sphere>(point3(25 + j * x_step, radius * std::sin(winding * j + i * M_PI), radius * std::cos(winding * j + i * M_PI)), 1, random_material(distribution, gen)));
+        }
+    }
 
     int frame_number = 0;
 
@@ -357,7 +402,7 @@ int main(int argc, char *args[])
                 but unfortunately, the functionality necessary to use relative mouse movements without movements being blocked
                 by the window borders is not available for WSL2 GUI windows. We tried both capturing the cursor and warping the
                 cursor to the center of the window. Neither works in WSL2, but they break the close window button.
-                The final product is kinda janky, but it allows for unlimited rotation, unlike the other implementations, which 
+                The final product is kinda janky, but it allows for unlimited rotation, unlike the other implementations, which
                 would limit how far the camera can be rotated.
                 Also, this solution does not mess with the close window button, like the other implementations did.
                 */
@@ -370,7 +415,7 @@ int main(int argc, char *args[])
                 auto rt_start_time = std::chrono::high_resolution_clock::now();
                 // std::cout << "start raytracing\n";
                 //  Render and create the outpainted stencil
-                rt_scene(scene, cam, frame_buffer);
+                rt_scene(scene, lights, cam, frame_buffer);
                 auto rt_end_time = std::chrono::high_resolution_clock::now();
 
                 auto outpainting_end_time = std::chrono::high_resolution_clock::now();
@@ -380,7 +425,7 @@ int main(int argc, char *args[])
 
 #if defined(RENDER_SCENE)
                 Uint8 *pixels = (Uint8 *)surface->pixels;
-                #pragma omp parallel for firstprivate(pixels)
+#pragma omp parallel for firstprivate(pixels)
                 for (int i = 0; i < SCREEN_HEIGHT; i++)
                 {
                     for (int j = 0; j < SCREEN_WIDTH; j++)
@@ -426,31 +471,27 @@ int main(int argc, char *args[])
             if (performance_logging)
             {
                 double avg_frame_time = (std::accumulate(total_times.begin(), total_times.end(), 0) / total_times.size());
-                double max_fps =  1000.0 / avg_frame_time;
-                std::cout << "Number of frames: " << frame_number << " : " << avg_frame_time << " ms average frame time" << " --> " << max_fps << " max fps\n";
+                double max_fps = 1000.0 / avg_frame_time;
+                std::cout << "Number of frames: " << frame_number << " : " << avg_frame_time << " ms average frame time"
+                          << " --> " << max_fps << " max fps\n";
                 std::cout << "   " << (std::accumulate(rt_times.begin(), rt_times.end(), 0) / rt_times.size()) << " milliseconds for average raytracing\n";
                 std::cout << "   " << (std::accumulate(surface_update_times.begin(), surface_update_times.end(), 0) / surface_update_times.size()) << " milliseconds for average tone mapping and surface update\n";
                 std::cout << "   " << ((std::accumulate(sdl_rendering_times.begin(), sdl_rendering_times.end(), 0) / sdl_rendering_times.size())) << " milliseconds for average SDL rendering\n";
-                
+
                 // producing log files
                 std::ofstream outFile1("../frametime.log");
-                if (outFile1.is_open()) {
-                    outFile1 << "Average Frame Time: " << avg_frame_time << " ms" << std::endl;
+                if (outFile1.is_open())
+                {
+                    for(int i = 0; i < total_times.size(); i++){
+                        outFile1 << total_times.at(i) << std::endl;
+                    }
                     outFile1.close();
-                    std::cout << "Average time per frame saved to 'frametime.log' file." << std::endl;
+                    std::cout << "frame times saved to 'frametime.log' file." << std::endl;
                 }
-                std::ofstream outFile("../framerate.log");
-                if (outFile.is_open()) {
-                    outFile << "Maximum Possible Framerate: " << max_fps << " fps" << std::endl;
-                    outFile.close();
-                    std::cout << "Maximum Possible Framerate saved to 'framerate.log' file." << std::endl;
-                }
+
             }
 
             return 0;
         }
     }
 }
-
-
-
