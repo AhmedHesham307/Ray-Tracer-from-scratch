@@ -3,20 +3,19 @@
 ## Third Sprint
 ![Screenshot from the current version](images/Sprint2.jpeg)
 1. New cmake based build procedure:
-    - Make sure you have OpenMP installed, if you have a gcc compiler then you propably already have it.
-2. Created a pure 3d scene in contrast to second sprint, we replaced the `Circle` with a `Sphere` class and the `Box` with `Wall`.
-3. Calculated the average time per frame and therefore the maximum frame per second and used `ofstream` to log these values as `.log` files that will be created in your main directory "outside of build folder".
-4. used `OpenMP` to increase the speed of calculation to some areas in the code we thought was demanding and took a long time to compute.
-5. Added a sky to the scene and a `sun` represented as a global lighting in the space.
-## Second Sprint
-![Screenshot from the current version](images/Sprint1.png)
-1. New cmake based build procedure: 
-    1. Make sure you have installed SDL for rendering to screen. On Debian-derived systems, i.e. Ubuntu or Mint, you can install this library with the command `sudo apt install libsdl2-dev`.
+    1. Make sure you have installed SDL for rendering to screen. On Debian-derived systems, i.e. Ubuntu or Mint, you can install this library with the command `sudo apt install libsdl2-dev`. You also have to install OpenMP for parallel execution on multicore CPUs.
     2. `mkdir build && cd build` to create the build directory and switch to that directory.
     3. `cmake ..` to configure the project. The path to the SDL headers should be detected automatically.
     4. `make` to build the project.
     5. `./RaytracerADP` to run the executable.
-
+2. Created a pure 3d scene in contrast to second sprint, we replaced the `Circle` with a `Sphere` class and `Wall` is now 3d.
+3. Calculated the average time per frame and and log frame times using `ofstream`. `.log` files will be created in your main directory "outside of build folder".
+4. used `OpenMP` to speed up raytracing (lines of the image are distributed across hardware threads) and tone mapping (a new addition with sprint 3).
+5. Added a sky to the scene and a `sun` represented as a global lighting in the space.
+6. You can now move and rotate the camera in 3d using the mouse and arrow keys. Unfortunately we are still restricted by the limitations of WSL2 GUIs which do not allow for constraining the cursor to the window. The camera still rotates based on the cursor being away from the center, not based on mouse movement like in any first person game.
+## Second Sprint
+![Screenshot from the current version](images/Sprint1.png)
+1. New cmake based build procedure: 
 2. Refactor the scene geometry description to utilize object oriented programming features. Both `Circle` and `Box` now inherit from `SceneGeometry`, a purely virtual class providing an interface for intersection with rays. 
 3. Implement movement using the arrow keys/WASD and camera rotation using the mouse. To rotate the camera to the left, move the cursor to the left half of the screen. To rotate right, move the cursor to the right half of the screen. If you do not want to rotate the camera, move the mouse to the center of the screen. We understand that this is janky and kinda suboptimal, but it is the only mouse input that consistently works with WSL2 GUI windows. Warping the cursor to the center of the screen does not work on WSL2, so with standard First-Person-Game-style camera rotation based on the movement (not the position) of the mouse, rotation would be limited by the cursor reaching the edges of the GUI window. The current implementation at least allows for unlimited rotation in every direction.
 4. Color was invented.

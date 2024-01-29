@@ -2,7 +2,7 @@
 #include <vector>
 #include <iostream>
 
-#define DEFAULT_MAT Material(RGB(1, 1, 1), .9, .9, .3, 30)
+#define DEFAULT_MAT Material(RGB(1, 1, 1), .9, .05, .5, 30)
 
 struct ray
 {

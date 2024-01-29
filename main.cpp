@@ -14,7 +14,7 @@
 #define RENDER_SCENE
 // #define TEXTURE_TEST
 
-#define LIGHT_POS point3(1, 10, 3)
+#define LIGHT_POS point3(1, 10, 0)
 #define GROUND_COLOR RGB(0.025, 0.05, 0.075)
 #define SKYCOLOR_LOW RGB(0.36, 0.45, 0.57)
 #define SKYCOLOR_HIGH RGB(0.14, 0.21, 0.49)
@@ -37,7 +37,7 @@ RGB out_color(vec3 v)
     v = v.normalize();
     const float skyGradient = 1. / 4.;
     vec3 skyColor = vec3::lerp(SKYCOLOR_LOW, SKYCOLOR_HIGH, std::pow(v.z, skyGradient));
-    double sun_amount = std::pow((v.dot(LIGHT_POS.normalize()) + 1) / 2, 20);
+    double sun_amount = std::pow((v.dot(LIGHT_POS.normalize()) + 1) / 2, 100);
     sun_amount = std::min(std::max(sun_amount, 0.), 1.);
     return vec3::lerp(skyColor, SUN_COLOR, sun_amount);
 }
@@ -112,6 +112,14 @@ RGB recursive_ray_tracing(const std::vector<std::unique_ptr<SceneGeometry>> &sce
         Material mat = scene.at(col.hit_object_index)->get_material();
         double diffuse_intensity = diffuse_shading(r.origin + r.direction * col.distance, col.normal, LIGHT_POS);
         double specular_intensity = std::pow(specular(pos, col.normal, LIGHT_POS, r.direction * (-1)), mat.specular_exponent);
+        point3 start_pos = pos + col.normal * .0001;
+        ray light_ray = ray((LIGHT_POS - start_pos).normalize(), start_pos);
+        Collision light_sample = find_closest_hit(scene, light_ray);
+        if(!(light_sample.distance < 0 || light_sample.distance > (LIGHT_POS - start_pos).length())){
+            //object is occluded
+            diffuse_intensity = 0;
+            specular_intensity = 0;
+        }
         RGB local_color = mat.color * (diffuse_intensity * mat.diffuse + specular_intensity * mat.specular + mat.ambient);
         if (remaining_iterations <= 0)
         {
@@ -119,7 +127,7 @@ RGB recursive_ray_tracing(const std::vector<std::unique_ptr<SceneGeometry>> &sce
         }
 
         // start new ray minimally offset from the surface so that the new ray can not hit the surface again
-        point3 start_pos = pos + col.normal * .0001;
+        
         vec3 reflected_dir = r.direction.reflect(col.normal);
         ray next_ray = ray(reflected_dir, start_pos);
 
@@ -164,15 +172,54 @@ int main(int argc, char *args[])
     std::vector<std::unique_ptr<SceneGeometry>> scene = {};
 
     // scene definition
- 
-    scene.push_back(std::make_unique<Sphere>(point3(2, 0, 0), .5, Material(RGB(1, 0, 0), .5)));
-    scene.push_back(std::make_unique<Sphere>(point3(-2, 0, 0), .5, Material(RGB(1, 0, 0), .5)));
-    scene.push_back(std::make_unique<Sphere>(point3(0, 0, 2), 1, Material(RGB(0, 0, 1), .5)));
-    scene.push_back(std::make_unique<Sphere>(point3(0, 0, -2), .5, Material(RGB(0, 0, 1), .5)));
-    // scene.push_back(std::make_unique<Sphere>(point3(0, 2, 0), 1, Material(RGB(0, 1, 0), .5)));
-    scene.push_back(std::make_unique<Sphere>(point3(0, -2, 0), .5, Material(RGB(0, 1, 0), .5)));
 
-    scene.push_back(std::make_unique<Wall>(point3(-0.5, 2, -0.5), vec3(0, 2, 0), 2, 1, Material(RGB(0, 1, 0), 0.5)));
+    // tum blue
+    Material tum_mat = Material(RGB(0, 20. / 255., 50. / 255.), .2, 1, .9, .5, 10);
+    double tum_distance = 20;
+ 
+    // tum logo
+    scene.push_back(std::make_unique<Sphere>(point3(tum_distance, 9, 4), 1, tum_mat));
+
+    scene.push_back(std::make_unique<Sphere>(point3(tum_distance, 7, 4), 1, tum_mat));
+    scene.push_back(std::make_unique<Sphere>(point3(tum_distance, 7, 2), 1, tum_mat));
+    scene.push_back(std::make_unique<Sphere>(point3(tum_distance, 7, 0), 1, tum_mat));
+    scene.push_back(std::make_unique<Sphere>(point3(tum_distance, 7, -2), 1, tum_mat));
+    scene.push_back(std::make_unique<Sphere>(point3(tum_distance, 7, -4), 1, tum_mat));
+
+    scene.push_back(std::make_unique<Sphere>(point3(tum_distance, 5, 4), 1, tum_mat));
+
+    scene.push_back(std::make_unique<Sphere>(point3(tum_distance, 3, 4), 1, tum_mat));
+    scene.push_back(std::make_unique<Sphere>(point3(tum_distance, 3, 2), 1, tum_mat));
+    scene.push_back(std::make_unique<Sphere>(point3(tum_distance, 3, 0), 1, tum_mat));
+    scene.push_back(std::make_unique<Sphere>(point3(tum_distance, 3, -2), 1, tum_mat));
+    scene.push_back(std::make_unique<Sphere>(point3(tum_distance, 3, -4), 1, tum_mat));
+
+    scene.push_back(std::make_unique<Sphere>(point3(tum_distance, 1, -4), 1, tum_mat));
+
+    scene.push_back(std::make_unique<Sphere>(point3(tum_distance, -1, 4), 1, tum_mat));
+    scene.push_back(std::make_unique<Sphere>(point3(tum_distance, -1, 2), 1, tum_mat));
+    scene.push_back(std::make_unique<Sphere>(point3(tum_distance, -1, 0), 1, tum_mat));
+    scene.push_back(std::make_unique<Sphere>(point3(tum_distance, -1, -2), 1, tum_mat));
+    scene.push_back(std::make_unique<Sphere>(point3(tum_distance, -1, -4), 1, tum_mat));
+
+    scene.push_back(std::make_unique<Sphere>(point3(tum_distance, -3, 4), 1, tum_mat));
+
+    scene.push_back(std::make_unique<Sphere>(point3(tum_distance, -5, 4), 1, tum_mat));
+    scene.push_back(std::make_unique<Sphere>(point3(tum_distance, -5, 2), 1, tum_mat));
+    scene.push_back(std::make_unique<Sphere>(point3(tum_distance, -5, 0), 1, tum_mat));
+    scene.push_back(std::make_unique<Sphere>(point3(tum_distance, -5, -2), 1, tum_mat));
+    scene.push_back(std::make_unique<Sphere>(point3(tum_distance, -5, -4), 1, tum_mat));
+
+    scene.push_back(std::make_unique<Sphere>(point3(tum_distance, -7, 4), 1, tum_mat));
+
+    scene.push_back(std::make_unique<Sphere>(point3(tum_distance, -9, 4), 1, tum_mat));
+    scene.push_back(std::make_unique<Sphere>(point3(tum_distance, -9, 2), 1, tum_mat));
+    scene.push_back(std::make_unique<Sphere>(point3(tum_distance, -9, 0), 1, tum_mat));
+    scene.push_back(std::make_unique<Sphere>(point3(tum_distance, -9, -2), 1, tum_mat));
+    scene.push_back(std::make_unique<Sphere>(point3(tum_distance, -9, -4), 1, tum_mat));
+
+    // scene.push_back(std::make_unique<Sphere>(point3(0, 2, 0), 1, Material(RGB(0, 1, 0), .5)));
+
     // scene.push_back(std::make_unique<Wall>(vec2(1, .5), point2(4, -3), 2, Material(RGB(0, 1, 0), 0.5)));
 
     int frame_number = 0;
@@ -192,7 +239,7 @@ int main(int argc, char *args[])
     else
     {
         // Create window
-        window = SDL_CreateWindow("SDL Tutorial", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
+        window = SDL_CreateWindow("ADP raytracer", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
         if (window == NULL)
         {
             printf("Window could not be created! SDL_Error: %s\n", SDL_GetError());
@@ -306,12 +353,12 @@ int main(int argc, char *args[])
                 }
 
                 /*
-                The code for rotating the mouse. We would have liked to implement camera movement like in first person games,
-                but unfortunately, the functionality necessary to relative use mouse movements without movements being blocked
+                The code for rotating the view. We would have liked to implement camera movement like in first person games,
+                but unfortunately, the functionality necessary to use relative mouse movements without movements being blocked
                 by the window borders is not available for WSL2 GUI windows. We tried both capturing the cursor and warping the
                 cursor to the center of the window. Neither works in WSL2, but they break the close window button.
-                The final product is kinda janky, but it allows for unlimited
-                rotation, unlike the other implementations, which would have been limited in how far the camera can be rotated.
+                The final product is kinda janky, but it allows for unlimited rotation, unlike the other implementations, which 
+                would limit how far the camera can be rotated.
                 Also, this solution does not mess with the close window button, like the other implementations did.
                 */
                 int x, y = 0;
@@ -358,7 +405,7 @@ int main(int argc, char *args[])
                 auto render_end_time = std::chrono::high_resolution_clock::now();
 
                 // append the measured times
-                auto rt_time = std::chrono::duration_cast<std::chrono::microseconds>(rt_end_time - rt_start_time);
+                auto rt_time = std::chrono::duration_cast<std::chrono::milliseconds>(rt_end_time - rt_start_time);
                 rt_times.push_back(rt_time.count());
                 auto surface_time = std::chrono::duration_cast<std::chrono::milliseconds>(surface_end_time - shading_end_time);
                 surface_update_times.push_back(surface_time.count());
@@ -381,7 +428,7 @@ int main(int argc, char *args[])
                 double avg_frame_time = (std::accumulate(total_times.begin(), total_times.end(), 0) / total_times.size());
                 double max_fps =  1000.0 / avg_frame_time;
                 std::cout << "Number of frames: " << frame_number << " : " << avg_frame_time << " ms average frame time" << " --> " << max_fps << " max fps\n";
-                std::cout << "   " << (std::accumulate(rt_times.begin(), rt_times.end(), 0) / rt_times.size()) << " microseconds for average raytracing\n";
+                std::cout << "   " << (std::accumulate(rt_times.begin(), rt_times.end(), 0) / rt_times.size()) << " milliseconds for average raytracing\n";
                 std::cout << "   " << (std::accumulate(surface_update_times.begin(), surface_update_times.end(), 0) / surface_update_times.size()) << " milliseconds for average tone mapping and surface update\n";
                 std::cout << "   " << ((std::accumulate(sdl_rendering_times.begin(), sdl_rendering_times.end(), 0) / sdl_rendering_times.size())) << " milliseconds for average SDL rendering\n";
                 

@@ -25,7 +25,7 @@ Collision Wall::intersect(ray r) const
 
         // Check if the intersection point is within the bounds of the wall
         if (projectionX >= 0 && projectionX <= length && projectionY >= 0 && projectionY <= width) {
-            return Collision(t, normal, true);
+            return Collision(t, normal.dot(r.direction) < 0 ? normal : normal * (-1), true);
         }
     }
 
