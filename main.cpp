@@ -201,14 +201,13 @@ int main(int argc, char *args[])
 
     std::vector<Light> lights = {};
 
-    lights.push_back(Light(point3(0, 10, 10), RGB(.3, .3, 0)));
-    lights.push_back(Light(point3(0, -10, 10), RGB(0, .3, .3)));
+    lights.push_back(Light(point3(30, 10, 0), RGB(.9, .9, 0)));
+    lights.push_back(Light(point3(30, -10, 0), RGB(0, .9, .9)));
 
     // scene definition
 
     // tum blue
-    Material tum_mat = Material(RGB(0, 20. / 255., 50. / 255.), .2, 1, .05, 1, 10);
-    Material floor_mat = Material(RGB(1, 1, 1), .2, .2, .2, .2, 10);
+    Material tum_mat = Material(RGB(0, 20. / 255., 50. / 255.), .2, 1, .05, 1, 50);
     double tum_distance = 40;
 
     // tum logo
@@ -263,7 +262,7 @@ int main(int argc, char *args[])
     {
         for (int j = 0; j < 30; j++)
         {
-            scene.push_back(std::make_unique<Sphere>(point3(25 + j * x_step, radius * std::sin(winding * j + i * M_PI), radius * std::cos(winding * j + i * M_PI)), 1, random_material(distribution, gen)));
+            scene.push_back(std::make_unique<Sphere>(point3(25 + j * x_step, radius * std::sin(winding * j + i * M_PI), radius * std::cos(winding * j + i * M_PI)), 1.3, random_material(distribution, gen)));
         }
     }
 
