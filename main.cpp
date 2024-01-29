@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <omp.h>
 #include <cmath>
 #include <float.h>
@@ -168,10 +169,10 @@ int main(int argc, char *args[])
     scene.push_back(std::make_unique<Sphere>(point3(-2, 0, 0), .5, Material(RGB(1, 0, 0), .5)));
     scene.push_back(std::make_unique<Sphere>(point3(0, 0, 2), 1, Material(RGB(0, 0, 1), .5)));
     scene.push_back(std::make_unique<Sphere>(point3(0, 0, -2), .5, Material(RGB(0, 0, 1), .5)));
-    scene.push_back(std::make_unique<Sphere>(point3(0, 2, 0), 1, Material(RGB(0, 1, 0), .5)));
+    // scene.push_back(std::make_unique<Sphere>(point3(0, 2, 0), 1, Material(RGB(0, 1, 0), .5)));
     scene.push_back(std::make_unique<Sphere>(point3(0, -2, 0), .5, Material(RGB(0, 1, 0), .5)));
 
-    // scene.push_back(std::make_unique<Wall>(vec2(2, -1), point2(4, 3), 1, Material(RGB(0, 0, 1), 0.5)));
+    scene.push_back(std::make_unique<Wall>(point3(-0.5, 2, -0.5), vec3(0, 2, 0), 2, 1, Material(RGB(0, 1, 0), 0.5)));
     // scene.push_back(std::make_unique<Wall>(vec2(1, .5), point2(4, -3), 2, Material(RGB(0, 1, 0), 0.5)));
 
     int frame_number = 0;
@@ -377,13 +378,32 @@ int main(int argc, char *args[])
             // log the average time taken by every step
             if (performance_logging)
             {
-                std::cout << "Number of frames: " << frame_number << " : " << (std::accumulate(total_times.begin(), total_times.end(), 0) / total_times.size()) << " ms average frame time\n";
+                double avg_frame_time = (std::accumulate(total_times.begin(), total_times.end(), 0) / total_times.size());
+                double max_fps =  1000.0 / avg_frame_time;
+                std::cout << "Number of frames: " << frame_number << " : " << avg_frame_time << " ms average frame time" << " --> " << max_fps << " max fps\n";
                 std::cout << "   " << (std::accumulate(rt_times.begin(), rt_times.end(), 0) / rt_times.size()) << " microseconds for average raytracing\n";
                 std::cout << "   " << (std::accumulate(surface_update_times.begin(), surface_update_times.end(), 0) / surface_update_times.size()) << " milliseconds for average tone mapping and surface update\n";
                 std::cout << "   " << ((std::accumulate(sdl_rendering_times.begin(), sdl_rendering_times.end(), 0) / sdl_rendering_times.size())) << " milliseconds for average SDL rendering\n";
+                
+                // producing log files
+                std::ofstream outFile1("../frametime.log");
+                if (outFile1.is_open()) {
+                    outFile1 << "Average Frame Time: " << avg_frame_time << " ms" << std::endl;
+                    outFile1.close();
+                    std::cout << "Average time per frame saved to 'frametime.log' file." << std::endl;
+                }
+                std::ofstream outFile("../framerate.log");
+                if (outFile.is_open()) {
+                    outFile << "Maximum Possible Framerate: " << max_fps << " fps" << std::endl;
+                    outFile.close();
+                    std::cout << "Maximum Possible Framerate saved to 'framerate.log' file." << std::endl;
+                }
             }
 
             return 0;
         }
     }
 }
+
+
+

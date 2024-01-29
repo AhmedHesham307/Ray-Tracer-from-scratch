@@ -1,32 +1,4 @@
 #include "scene.h"
-/*
-Collision Wall::intersect(ray r) const
-{
-
-
-    // check determinant so we do not attempt to solve an unsolvable system (otherwise divide by zero will occur)
-    double det = (r.direction.x * (-direction.y) - (-direction.x * r.direction.y));
-    if (det == 0)
-        return Collision(-1, vec2(0, 0), false);
-
-    vec2 rhs = r.origin * (-1.) + origin;
-
-    double first_step_fraction = r.direction.y / r.direction.x;
-
-    double p2 = (rhs.y - first_step_fraction * rhs.x) / (-direction.y + first_step_fraction * direction.x);
-
-    double p1 = (rhs.x + p2 * direction.x) / r.direction.x;
-
-    bool hit = p1 > 0 && p2 >= 0 && p2 <= upper_bound;
-
-    vec2 normal(direction.y, -direction.x);
-    if (normal.dot(r.direction) > 0)
-        normal = normal * (-1.);
-
-    return Collision(r.direction.length() * p1, normal, hit);
-}
-*/
-
 Collision Wall::intersect(ray r) const
 {
     // Calculate the denominator of the parametric equation
@@ -34,9 +6,9 @@ Collision Wall::intersect(ray r) const
 
     // Calculate the parameter t for the intersection point
     double t = (position - r.origin).dot(normal) / denominator;
+    
     // Check if the intersection point is in front of the ray
-    if (t > 0)
-    {
+    if (t > 0) {
         // Calculate the intersection point
         vec3 intersection_point = r.origin + r.direction * t;
 
@@ -52,14 +24,14 @@ Collision Wall::intersect(ray r) const
         double projectionY = wallToIntersection.dot(wallUp);
 
         // Check if the intersection point is within the bounds of the wall
-        if (projectionX >= 0 && projectionX <= length && projectionY >= 0 && projectionY <= width)
-        {
+        if (projectionX >= 0 && projectionX <= length && projectionY >= 0 && projectionY <= width) {
             return Collision(t, normal, true);
         }
     }
 
     return Collision(-1, vec3(0, 0, 0), false);
 }
+
 
 // Ray sphere intersection function adapted from this blog https://iquilezles.org/articles/intersectors/
 Collision Sphere::intersect(ray r) const
